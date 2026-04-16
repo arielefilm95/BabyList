@@ -103,6 +103,24 @@ export const MASTER_TASKS = [
   { title: 'Cojín de lactancia', category: 'Mamá', phase: 'Mid', priority: 'Medium', isCompleted: false },
   { title: 'Apósitos postparto (alta absorción)', category: 'Mamá', phase: 'Mid', priority: 'High', isCompleted: false },
   { title: 'Botella de agua de 2 litros', category: 'Mamá', phase: 'Mid', priority: 'Medium', isCompleted: false },
+  { title: 'Vitaminas prenatales', category: 'Mamá', phase: 'Early', priority: 'High', isCompleted: false },
+  { title: 'Controles médicos al día', category: 'Mamá', phase: 'Early', priority: 'High', isCompleted: false },
+  // Casa
+  { title: 'Habitación decorada/lista', category: 'Casa', phase: 'Mid', priority: 'High', isCompleted: false },
+  { title: 'Área de cambio organizada', category: 'Casa', phase: 'Mid', priority: 'High', isCompleted: false },
+  { title: 'Persianas/Cortinas oscuras', category: 'Casa', phase: 'Mid', priority: 'Medium', isCompleted: false },
+  { title: 'Humidificador', category: 'Casa', phase: 'Mid', priority: 'Medium', isCompleted: false },
+  { title: 'Esterilizador', category: 'Casa', phase: 'Mid', priority: 'High', isCompleted: false },
+  { title: 'Calentador de biberones', category: 'Casa', phase: 'Mid', priority: 'Medium', isCompleted: false },
+  { title: 'Detector de movimiento', category: 'Casa', phase: 'Mid', priority: 'Low', isCompleted: false },
+  { title: 'Luz nocturna', category: 'Casa', phase: 'Mid', priority: 'Low', isCompleted: false },
+  // Alimentación
+  { title: 'Biberones (2-3 unidades)', category: 'Alimentación', phase: 'Mid', priority: 'High', isCompleted: false },
+  { title: 'Sacaleches', category: 'Alimentación', phase: 'Mid', priority: 'High', isCompleted: false },
+  { title: 'Bolsa de conservación de leche', category: 'Alimentación', phase: 'Mid', priority: 'Medium', isCompleted: false },
+  { title: 'Fórmula de respaldo', category: 'Alimentación', phase: 'Late', priority: 'Medium', isCompleted: false },
+  { title: 'Meal prep en freezer', category: 'Alimentación', phase: 'Late', priority: 'High', isCompleted: false },
+  { title: 'Chupetes (bobos)', category: 'Alimentación', phase: 'Mid', priority: 'Low', isCompleted: false },
   // Hospital
   { title: '3 Camisolas (apertura frontal)', category: 'Hospital', phase: 'Late', priority: 'High', isCompleted: false },
   { title: 'Bata y pantuflas', category: 'Hospital', phase: 'Late', priority: 'Medium', isCompleted: false },
@@ -119,6 +137,13 @@ export const MASTER_TASKS = [
   { title: 'Cámara / Espacio en el móvil', category: 'Hospital', phase: 'Late', priority: 'Medium', isCompleted: false },
   { title: 'Snacks y efectivo', category: 'Hospital', phase: 'Late', priority: 'Medium', isCompleted: false },
   { title: 'Documentos (Identidad y Seguro)', category: 'Hospital', phase: 'Late', priority: 'High', isCompleted: false },
+  { title: 'Plan de parto escrito', category: 'Hospital', phase: 'Late', priority: 'High', isCompleted: false },
+  // Trámites
+  { title: 'Registro civil informado', category: 'Trámites', phase: 'Mid', priority: 'High', isCompleted: false },
+  { title: 'Seguro médico del bebé', category: 'Trámites', phase: 'Late', priority: 'High', isCompleted: false },
+  { title: 'Permiso de postnatal', category: 'Trámites', phase: 'Late', priority: 'High', isCompleted: false },
+  { title: 'Trámites laborales (licencia)', category: 'Trámites', phase: 'Mid', priority: 'High', isCompleted: false },
+  { title: 'Exámenes prenatales al día', category: 'Trámites', phase: 'Early', priority: 'High', isCompleted: false },
   // Misiones
   { title: 'Leer manual de la silla de auto', category: 'Misiones', phase: 'Early', priority: 'High', isCompleted: false },
   { title: 'Aprender a mudar rápido', category: 'Misiones', phase: 'Late', priority: 'High', isCompleted: false },

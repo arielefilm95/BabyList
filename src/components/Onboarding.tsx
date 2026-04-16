@@ -248,29 +248,47 @@ export const Onboarding = () => {
       icon: <ListChecks className="w-12 h-12 text-teal-600" />,
       content: (
         <div className="space-y-4 py-4">
-          <p className="text-sm text-stone-600 mb-4">
+          <p className="text-sm text-stone-600 mb-2">
             Marca los elementos que ya tienes o las tareas que ya completaste. Así tu BabyPlan estará actualizado desde el primer día.
           </p>
-          <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-            {MASTER_TASKS.filter(t => t.category === 'Bebé' || t.category === 'Mamá').map((task, idx) => (
-              <label key={idx} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-stone-100 cursor-pointer hover:border-teal-200 transition-colors">
-                <input 
-                  type="checkbox" 
-                  className="mt-1 w-4 h-4 text-teal-600 border-stone-300 rounded focus:ring-teal-500"
-                  checked={formData.completedTasks.includes(task.title)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setFormData({ ...formData, completedTasks: [...formData.completedTasks, task.title] });
-                    } else {
-                      setFormData({ ...formData, completedTasks: formData.completedTasks.filter(t => t !== task.title) });
-                    }
-                  }}
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-stone-800">{task.title}</p>
-                  <p className="text-[10px] text-stone-500">{task.category}</p>
+          <div className="max-h-72 overflow-y-auto space-y-4 pr-2">
+            {['Bebé', 'Mamá', 'Casa', 'Alimentación', 'Hospital', 'Trámites', 'Misiones'].map(category => (
+              <div key={category}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`w-2 h-2 rounded-full ${
+                    category === 'Bebé' ? 'bg-rose-400' :
+                    category === 'Mamá' ? 'bg-teal-500' :
+                    category === 'Casa' ? 'bg-amber-500' :
+                    category === 'Alimentación' ? 'bg-orange-500' :
+                    category === 'Hospital' ? 'bg-blue-500' :
+                    category === 'Trámites' ? 'bg-purple-500' :
+                    'bg-stone-400'
+                  }`} />
+                  <span className="text-xs font-bold text-stone-600 uppercase tracking-wide">{category}</span>
+                  <span className="text-[10px] text-stone-400">
+                    ({MASTER_TASKS.filter(t => t.category === category && formData.completedTasks.includes(t.title)).length}/{MASTER_TASKS.filter(t => t.category === category).length})
+                  </span>
                 </div>
-              </label>
+                <div className="space-y-1">
+                  {MASTER_TASKS.filter(t => t.category === category).map((task, idx) => (
+                    <label key={idx} className="flex items-start gap-2 p-2 bg-white rounded-lg border border-stone-100 cursor-pointer hover:border-teal-200 transition-colors">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 w-3.5 h-3.5 text-teal-600 border-stone-300 rounded focus:ring-teal-500"
+                        checked={formData.completedTasks.includes(task.title)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setFormData({ ...formData, completedTasks: [...formData.completedTasks, task.title] });
+                          } else {
+                            setFormData({ ...formData, completedTasks: formData.completedTasks.filter(t => t !== task.title) });
+                          }
+                        }}
+                      />
+                      <span className="text-xs text-stone-700">{task.title}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>

@@ -1026,7 +1026,7 @@ const Dashboard = ({
     { name: 'Pendientes', value: gifts.length - reservedCount },
   ];
 
-  const taskStats = ['Bebé', 'Mamá', 'Hospital', 'Misiones'].map(cat => ({
+  const taskStats = ['Bebé', 'Mamá', 'Casa', 'Alimentación', 'Hospital', 'Trámites', 'Misiones'].map(cat => ({
     category: cat,
     total: tasks.filter(t => t.category === cat).length,
     completed: tasks.filter(t => t.category === cat && t.isCompleted).length
@@ -1368,7 +1368,10 @@ const Checklists = ({
               <select className="rounded-md border p-2" value={newTask.category} onChange={e => setNewTask({...newTask, category: e.target.value as any})}>
                 <option value="Bebé">Bebé</option>
                 <option value="Mamá">Mamá</option>
+                <option value="Casa">Casa</option>
+                <option value="Alimentación">Alimentación</option>
                 <option value="Hospital">Hospital</option>
+                <option value="Trámites">Trámites</option>
                 <option value="Misiones">Misiones</option>
               </select>
               <select className="rounded-md border p-2 text-sm" value={newTask.phase} onChange={e => setNewTask({...newTask, phase: e.target.value as any})}>
@@ -1386,7 +1389,7 @@ const Checklists = ({
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {['All', 'Bebé', 'Mamá', 'Hospital', 'Misiones'].map(cat => (
+        {['All', 'Bebé', 'Mamá', 'Casa', 'Alimentación', 'Hospital', 'Trámites', 'Misiones'].map(cat => (
           <button
             key={cat}
             onClick={() => setFilter(cat)}
