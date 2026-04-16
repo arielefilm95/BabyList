@@ -741,16 +741,10 @@ const Wishlist = ({
                         value={newGift.category}
                         onChange={e => setNewGift({...newGift, category: e.target.value})}
                       >
-                        <option value="General">General</option>
-                        <option value="Transporte">Transporte</option>
-                        <option value="Mobiliario">Mobiliario</option>
-                        <option value="Higiene">Higiene</option>
-                        <option value="Salud">Salud</option>
-                        <option value="Ropa">Ropa</option>
-                        <option value="Alimentación">Alimentación</option>
-                        <option value="Accesorios">Accesorios</option>
-                        <option value="Seguridad">Seguridad</option>
+                        <option value="Bebé">Bebé</option>
                         <option value="Mamá">Mamá</option>
+                        <option value="Casa">Casa</option>
+                        <option value="Alimentación">Alimentación</option>
                       </select>
                     </div>
                     <Input placeholder="URL de Imagen" value={newGift.imageUrl} onChange={e => setNewGift({...newGift, imageUrl: e.target.value})} />
