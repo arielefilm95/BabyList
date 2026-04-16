@@ -908,6 +908,7 @@ const Wishlist = ({
             const inCart = cart.find(item => item.gift.id === viewingGift.id)?.quantity || 0;
             const remaining = viewingGift.isRepeatable ? (viewingGift.quantityNeeded || 1) - (viewingGift.quantityReserved || 0) - inCart : 1 - inCart;
             const isFullyReserved = remaining <= 0 || viewingGift.isReserved;
+            const isOwnGift = isOwner;
 
             return (
             <div className="grid gap-4 py-4">
@@ -921,30 +922,53 @@ const Wishlist = ({
                   )}
                 </div>
               )}
-              
+
               {viewingGift.purchaseUrl && (
                 <Button variant="outline" className="w-full" render={<a href={viewingGift.purchaseUrl} target="_blank" rel="noopener noreferrer" />}>
                   <ExternalLink className="mr-2 h-4 w-4" /> Ver en la tienda / Comprar Online
                 </Button>
               )}
 
-              {!isFullyReserved ? (
+              {/* Si es el dueño de la lista, no mostrar opción de añadir */}
+              {isOwnGift ? (
+                <div className="p-4 bg-stone-50 rounded-md text-center text-stone-500 text-sm">
+                  Este es tu regalo. Los invitados pueden reservarlo desde su lista.
+                </div>
+              ) : !isFullyReserved ? (
                 <div className="space-y-4 pt-4 border-t border-stone-100">
                   {viewingGift.isRepeatable && (
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Cantidad a añadir (Disponibles: {remaining})</label>
-                      <Input 
-                        type="number" 
+                      <Input
+                        type="number"
                         min="1"
                         max={remaining}
-                        value={reserveQuantity} 
-                        onChange={e => setReserveQuantity(Math.min(remaining, Math.max(1, parseInt(e.target.value) || 1)))} 
+                        value={reserveQuantity}
+                        onChange={e => setReserveQuantity(Math.min(remaining, Math.max(1, parseInt(e.target.value) || 1)))}
                       />
                     </div>
                   )}
-                  <Button onClick={handleAddToCart} className="w-full bg-teal-600 hover:bg-teal-700">
-                    <ShoppingCart className="mr-2 h-4 w-4" /> Añadir a mis regalos
-                  </Button>
+                  {inCart > 0 ? (
+                    <div className="space-y-2">
+                      <div className="p-3 bg-teal-50 rounded-lg text-teal-700 text-sm">
+                        Ya tienes {inCart} unidades reservadas en tu lista.
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="w-full text-rose-500 border-rose-200 hover:bg-rose-50"
+                        onClick={() => {
+                          setCart(prev => prev.filter(item => item.gift.id !== viewingGift.id));
+                          setViewingGift(null);
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" /> Cancelar reserva
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button onClick={handleAddToCart} className="w-full bg-teal-600 hover:bg-teal-700">
+                      <ShoppingCart className="mr-2 h-4 w-4" /> Añadir a mis regalos
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="p-4 bg-stone-50 rounded-md text-center text-stone-500 text-sm">
