@@ -19,6 +19,8 @@ export const MASTER_GIFTS = [
   { name: 'Pares de calcetines', category: 'Bebé', isReserved: false, isRepeatable: true, quantityNeeded: 6, quantityReserved: 0, price: 7990 },
   { name: 'Tutos (Paños de gasa)', category: 'Bebé', isReserved: false, isRepeatable: true, quantityNeeded: 10, quantityReserved: 0, price: 19990 },
   { name: 'Mantas/Cobitas (ligera y gruesa)', category: 'Bebé', isReserved: false, isRepeatable: true, quantityNeeded: 2, quantityReserved: 0, price: 15990 },
+  { name: 'Pañales Recién Nacido (RN)', category: 'Bebé', isReserved: false, isRepeatable: true, quantityNeeded: 2, quantityReserved: 0, price: 12990 },
+  { name: 'Pañales Talla P', category: 'Bebé', isReserved: false, isRepeatable: true, quantityNeeded: 999, quantityReserved: 0, price: 14990 },
   // Mamá
   { name: 'Almohada de embarazo (C o U)', category: 'Mamá', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 39990 },
   { name: 'Aceites/Cremas antiestrías', category: 'Mamá', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 18990 },
