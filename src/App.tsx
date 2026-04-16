@@ -615,9 +615,10 @@ const Wishlist = ({
   const [editingGift, setEditingGift] = useState<Gift | null>(null);
   const [viewingGift, setViewingGift] = useState<Gift | null>(null);
   const [reserveQuantity, setReserveQuantity] = useState(1);
+  const [giftFilter, setGiftFilter] = useState<string>('All');
   const [newGift, setNewGift] = useState<Partial<Gift>>({
     name: '',
-    category: 'General',
+    category: 'Bebé',
     isReserved: false,
     isRepeatable: false,
     quantityNeeded: 1,
@@ -773,6 +774,7 @@ const Wishlist = ({
                         <option value="Mamá">Mamá</option>
                         <option value="Casa">Casa</option>
                         <option value="Alimentación">Alimentación</option>
+                        <option value="Hospital">Hospital</option>
                       </select>
                     </div>
                     <Input placeholder="URL de Imagen" value={newGift.imageUrl} onChange={e => setNewGift({...newGift, imageUrl: e.target.value})} />
@@ -795,9 +797,25 @@ const Wishlist = ({
         </div>
       </div>
 
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {['All', 'Bebé', 'Mamá', 'Casa', 'Alimentación', 'Hospital'].map(cat => (
+          <button
+            key={cat}
+            onClick={() => setGiftFilter(cat)}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-colors whitespace-nowrap ${
+              giftFilter === cat
+                ? 'bg-teal-600 text-white'
+                : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+            }`}
+          >
+            {cat === 'All' ? 'Todos' : cat}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2">
         <AnimatePresence>
-          {gifts.map((gift) => {
+          {gifts.filter(g => giftFilter === 'All' || g.category === giftFilter).map((gift) => {
             const remaining = gift.isRepeatable ? (gift.quantityNeeded || 1) - (gift.quantityReserved || 0) : 0;
             const isFullyReserved = gift.isRepeatable ? remaining <= 0 : gift.isReserved;
 

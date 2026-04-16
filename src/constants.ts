@@ -24,11 +24,13 @@ export const MASTER_GIFTS = [
   // Mamá
   { name: 'Almohada de embarazo (C o U)', category: 'Mamá', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 39990 },
   { name: 'Aceites/Cremas antiestrías', category: 'Mamá', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 18990 },
+  { name: 'Ropa de descanso holgada', category: 'Mamá', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 29990 },
   { name: 'Sostenes de lactancia', category: 'Mamá', isReserved: false, isRepeatable: true, quantityNeeded: 3, quantityReserved: 0, price: 24990 },
   { name: 'Discos absorbentes', category: 'Mamá', isReserved: false, isRepeatable: true, quantityNeeded: 10, quantityReserved: 0, price: 14990 },
   { name: 'Crema de lanolina', category: 'Mamá', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 12990 },
   { name: 'Cojín de lactancia', category: 'Mamá', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 19990 },
   { name: 'Apósitos postparto (alta absorción)', category: 'Mamá', isReserved: false, isRepeatable: true, quantityNeeded: 20, quantityReserved: 0, price: 15990 },
+  { name: 'Botella de agua de 2 litros', category: 'Mamá', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 8990 },
   // Casa
   { name: 'Humidificador', category: 'Casa', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 29990 },
   { name: 'Esterilizador', category: 'Casa', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 39990 },
@@ -38,7 +40,14 @@ export const MASTER_GIFTS = [
   { name: 'Mamaderas (2-3 unidades)', category: 'Alimentación', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 19990 },
   { name: 'Sacaleches', category: 'Alimentación', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 44990 },
   { name: 'Bolsa de conservación de leche', category: 'Alimentación', isReserved: false, isRepeatable: true, quantityNeeded: 30, quantityReserved: 0, price: 9990 },
-  { name: 'Chupetes', category: 'Alimentación', isReserved: false, isRepeatable: false, quantityNeeded: 2, quantityReserved: 0, price: 5990 }
+  { name: 'Fórmula de respaldo', category: 'Alimentación', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 19990 },
+  { name: 'Chupetes', category: 'Alimentación', isReserved: false, isRepeatable: false, quantityNeeded: 2, quantityReserved: 0, price: 5990 },
+  // Hospital
+  { name: 'Camisones para el hospital (apertura frontal)', category: 'Hospital', isReserved: false, isRepeatable: true, quantityNeeded: 3, quantityReserved: 0, price: 19990 },
+  { name: 'Bata y pantuflas para el hospital', category: 'Hospital', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 14990 },
+  { name: 'Kit de aseo personal para el hospital', category: 'Hospital', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 8990 },
+  { name: 'Ropa cómoda para el alta', category: 'Hospital', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 24990 },
+  { name: 'Manta/cobija para la salida', category: 'Hospital', isReserved: false, isRepeatable: false, quantityNeeded: 1, quantityReserved: 0, price: 15990 }
 ];
 
 export const PREGNANCY_PHASES = [
