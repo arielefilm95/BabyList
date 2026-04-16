@@ -1,0 +1,165 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: wishlist
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required)
+    //   - category: string (required)
+    //   - imageUrl: string (optional)
+    //   - purchaseUrl: string (optional)
+    //   - isReserved: bool (required)
+    //   - reservedBy: string (optional)
+    //   - isRepeatable: bool (required)
+    //   - quantityNeeded: number (optional)
+    //   - quantityReserved: number (optional)
+    //
+    // Collection: tasks
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required)
+    //   - category: string (required, enum: Pedrito, Vanessa, Hospital, Misiones)
+    //   - phase: string (required, enum: Early, Mid, Late)
+    //   - isCompleted: bool (required)
+    //   - priority: string (required, enum: Low, Medium, High)
+    //
+    // Collection: notifications
+    // Document ID: auto-generated
+    // Fields:
+    //   - title: string (required)
+    //   - message: string (required)
+    //   - type: string (required, enum: gift, task, system)
+    //   - createdAt: timestamp (required)
+    //   - isRead: bool (required)
+    //   - targetId: string (optional)
+    //
+    // Collection: photos
+    // Document ID: auto-generated
+    // Fields:
+    //   - url: string (required)
+    //   - description: string (optional)
+    //   - date: string (required)
+    //   - createdAt: timestamp (required)
+    //   - userId: string (required)
+    //
+    // Collection: profiles
+    // Document ID: userId
+    // Fields:
+    //   - parent1Name: string
+    //   - parent2Name: string
+    //   - babyName: string
+    //   - babyCount: number
+    //   - dueDate: string (ISO)
+    //   - pregnancyStartDate: string (ISO)
+    //   - gestationWeekAtStart: number
+    //   - role: string (admin/user)
+    //   - createdAt: timestamp
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "aaes17@gmail.com" || 
+         get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == "admin");
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidProfile(data) {
+      return data.parent1Name is string && data.parent1Name.size() > 0 &&
+             data.babyNames is list && data.babyNames.size() > 0 &&
+             data.role in ["admin", "user"] &&
+             (!('parent1Gender' in data) || data.parent1Gender in ["male", "female", "other"]) &&
+             (!('parent2Gender' in data) || data.parent2Gender in ["male", "female", "other"]);
+    }
+
+    function isValidGift(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.category is string &&
+             data.isReserved is bool &&
+             data.isRepeatable is bool;
+    }
+
+    function isValidTask(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() < 500 &&
+             data.category in ["Pedrito", "Vanessa", "Hospital", "Misiones"] &&
+             data.phase in ["Early", "Mid", "Late"] &&
+             data.isCompleted is bool;
+    }
+
+    function isValidNotification(data) {
+      return data.title is string && data.title.size() > 0 &&
+             data.message is string && data.message.size() > 0 &&
+             data.type in ["gift", "task", "system"] &&
+             data.isRead is bool;
+    }
+
+    function isValidPhoto(data) {
+      return data.url is string && data.url.size() > 0 &&
+             data.date is string &&
+             data.userId is string;
+    }
+
+    // Profiles Rules
+    match /profiles/{userId} {
+      allow read: if true; // Publicly readable for sharing
+      allow create: if isOwner(userId) && isValidProfile(request.resource.data);
+      allow update: if isOwner(userId) && isValidProfile(request.resource.data) && 
+                      (request.resource.data.role == resource.data.role || isAdmin());
+
+      // Wishlist Rules
+      match /wishlist/{giftId} {
+        allow read: if true;
+        allow update: if !isOwner(userId) && 
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isReserved', 'reservedBy', 'quantityReserved']) &&
+                      (resource.data.isRepeatable || !resource.data.isReserved);
+        allow write: if isOwner(userId) && isValidGift(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+
+      // Tasks Rules
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Notifications Rules
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+        allow create: if isValidNotification(request.resource.data);
+        allow update: if isOwner(userId);
+      }
+
+      // Photos Rules
+      match /photos/{photoId} {
+        allow read: if true; // Publicly readable for gallery
+        allow write: if isOwner(userId);
+      }
+
+      // Settings Rules
+      match /settings/{settingId} {
+        allow read: if true;
+        allow write: if isOwner(userId);
+      }
+    }
+
+    match /usernames/{username} {
+      allow read: if true;
+      allow create: if isAuthenticated() && 
+                    request.resource.data.keys().hasAll(['email', 'uid']) &&
+                    request.resource.data.uid == request.auth.uid &&
+                    request.resource.data.email is string;
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+  }
+}

@@ -1,0 +1,123 @@
+{
+  "entities": {
+    "Gift": {
+      "title": "Gift",
+      "description": "An item in the baby shower wishlist",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "purchaseUrl": { "type": "string" },
+        "isReserved": { "type": "boolean" },
+        "reservedBy": { "type": "string" },
+        "isRepeatable": { "type": "boolean" },
+        "quantityNeeded": { "type": "number" },
+        "quantityReserved": { "type": "number" }
+      },
+      "required": ["name", "category", "isReserved", "isRepeatable"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A preparation task for the parents",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "category": { "type": "string", "enum": ["Pedrito", "Vanessa", "Hospital", "Misiones"] },
+        "phase": { "type": "string", "enum": ["Early", "Mid", "Late"] },
+        "isCompleted": { "type": "boolean" },
+        "priority": { "type": "string", "enum": ["Low", "Medium", "High"] }
+      },
+      "required": ["title", "category", "phase", "isCompleted"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "An in-app notification for parents",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["gift", "task", "system"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "isRead": { "type": "boolean" },
+        "targetId": { "type": "string" }
+      },
+      "required": ["title", "message", "type", "createdAt", "isRead"]
+    },
+    "Photo": {
+      "title": "Photo",
+      "description": "A photo in the gallery",
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "userId": { "type": "string" }
+      },
+      "required": ["url", "date", "createdAt", "userId"]
+    },
+    "Profile": {
+      "title": "Profile",
+      "description": "User pregnancy profile and settings",
+      "type": "object",
+      "properties": {
+        "parent1Name": { "type": "string" },
+        "parent1Gender": { "type": "string", "enum": ["male", "female", "other"] },
+        "parent2Name": { "type": "string" },
+        "parent2Gender": { "type": "string", "enum": ["male", "female", "other"] },
+        "babyNames": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "babyCount": { "type": "number" },
+        "dueDate": { "type": "string", "format": "date" },
+        "pregnancyStartDate": { "type": "string", "format": "date" },
+        "gestationWeekAtStart": { "type": "number" },
+        "gestationDaysAtStart": { "type": "number" },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["parent1Name", "babyName", "dueDate", "role"]
+    },
+    "BankDetails": {
+      "title": "BankDetails",
+      "description": "Bank account details for transfers",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "rut": { "type": "string" },
+        "bankName": { "type": "string" },
+        "accountType": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "email": { "type": "string", "format": "email" }
+      }
+    }
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": "Profile",
+      "description": "User pregnancy profiles"
+    },
+    "/profiles/{userId}/wishlist/{giftId}": {
+      "schema": "Gift",
+      "description": "Collection of gifts for a specific user's baby shower"
+    },
+    "/profiles/{userId}/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Collection of preparation tasks for a specific user"
+    },
+    "/profiles/{userId}/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Collection of in-app notifications for a specific user"
+    },
+    "/profiles/{userId}/photos/{photoId}": {
+      "schema": "Photo",
+      "description": "Collection of gallery photos for a specific user"
+    },
+    "/profiles/{userId}/settings/bankDetails": {
+      "schema": "BankDetails",
+      "description": "User-specific bank details for gift transfers"
+    }
+  }
+}
