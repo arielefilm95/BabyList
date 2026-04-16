@@ -259,6 +259,7 @@ const Navbar = ({ activeTab, setActiveTab, guestProfile, isGuestView }: { active
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [isResettingTasks, setIsResettingTasks] = useState(false);
   const [settingsForm, setSettingsForm] = useState<any>({
     parent1Name: '',
     parent2Name: '',
@@ -306,6 +307,27 @@ const Navbar = ({ activeTab, setActiveTab, guestProfile, isGuestView }: { active
     }
   };
 
+  const resetTasks = async () => {
+    if (!user) return;
+    if (!window.confirm('¿Resetear todas las tareas? Esto eliminará las tareas actuales y las volverá a crear con todas las categorías.')) return;
+    setIsResettingTasks(true);
+    try {
+      const tasksSnapshot = await getDocs(collection(db, 'profiles', user.uid, 'tasks'));
+      const deletePromises = tasksSnapshot.docs.map(docSnap => deleteDoc(doc(db, 'profiles', user.uid, 'tasks', docSnap.id)));
+      await Promise.all(deletePromises);
+      for (const task of MASTER_TASKS) {
+        await addDoc(collection(db, 'profiles', user.uid, 'tasks'), task);
+      }
+      alert('Tareas reseteadas correctamente');
+      setShowSettingsDialog(false);
+    } catch(err) {
+      console.error(err);
+      alert('Error al resetear tareas');
+    } finally {
+      setIsResettingTasks(false);
+    }
+  };
+
   return (
     <>
     <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
@@ -335,17 +357,23 @@ const Navbar = ({ activeTab, setActiveTab, guestProfile, isGuestView }: { active
              <Input type="date" value={settingsForm.dueDate} onChange={e => setSettingsForm({...settingsForm, dueDate: e.target.value})} />
           </div>
           <div className="pt-4 border-t border-stone-200">
-             <h4 className="text-sm font-bold text-rose-600 mb-2">Zona de Peligro</h4>
-             <Button variant="destructive" className="w-full" onClick={() => {
-                  if(window.confirm('¿Estás seguro de que deseas eliminar tu cuenta permanentemente? Esta acción borrará TODO y no se puede deshacer.')) {
-                    deleteUserAccount().then(() => {
-                      logout();
-                    }).catch(err => alert("Debes volver a iniciar sesión para poder eliminar tu cuenta."));
-                  }
-             }}>
-                <Trash2 className="w-4 h-4 mr-2" /> Eliminar cuenta permanentemente
-             </Button>
-          </div>
+              <h4 className="text-sm font-bold text-amber-600 mb-2">Herramientas</h4>
+              <Button variant="outline" className="w-full mb-2" onClick={resetTasks} disabled={isResettingTasks}>
+                <ListChecks className="w-4 h-4 mr-2" /> {isResettingTasks ? 'Reseteando...' : 'Resetear Tareas'}
+              </Button>
+           </div>
+           <div className="pt-4 border-t border-stone-200">
+              <h4 className="text-sm font-bold text-rose-600 mb-2">Zona de Peligro</h4>
+              <Button variant="destructive" className="w-full" onClick={() => {
+                   if(window.confirm('¿Estás seguro de que deseas eliminar tu cuenta permanentemente? Esta acción borrará TODO y no se puede deshacer.')) {
+                     deleteUserAccount().then(() => {
+                       logout();
+                     }).catch(err => alert("Debes volver a iniciar sesión para poder eliminar tu cuenta."));
+                   }
+              }}>
+                 <Trash2 className="w-4 h-4 mr-2" /> Eliminar cuenta permanentemente
+              </Button>
+           </div>
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => setShowSettingsDialog(false)}>Cancelar</Button>
