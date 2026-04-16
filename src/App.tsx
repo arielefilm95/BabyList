@@ -734,7 +734,25 @@ const Wishlist = ({
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <Input placeholder="Nombre del artículo" value={newGift.name} onChange={e => setNewGift({...newGift, name: e.target.value})} />
-                    <Input placeholder="Categoría (ej. Higiene, Ropa)" value={newGift.category} onChange={e => setNewGift({...newGift, category: e.target.value})} />
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-stone-700">Categoría</label>
+                      <select
+                        className="w-full rounded-md border border-stone-300 p-2 text-sm bg-white"
+                        value={newGift.category}
+                        onChange={e => setNewGift({...newGift, category: e.target.value})}
+                      >
+                        <option value="General">General</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Mobiliario">Mobiliario</option>
+                        <option value="Higiene">Higiene</option>
+                        <option value="Salud">Salud</option>
+                        <option value="Ropa">Ropa</option>
+                        <option value="Alimentación">Alimentación</option>
+                        <option value="Accesorios">Accesorios</option>
+                        <option value="Seguridad">Seguridad</option>
+                        <option value="Mamá">Mamá</option>
+                      </select>
+                    </div>
                     <Input placeholder="URL de Imagen" value={newGift.imageUrl} onChange={e => setNewGift({...newGift, imageUrl: e.target.value})} />
                     <Input placeholder="URL de Compra" value={newGift.purchaseUrl} onChange={e => setNewGift({...newGift, purchaseUrl: e.target.value})} />
                     <Input type="number" placeholder="Precio (Opcional)" value={newGift.price || ''} onChange={e => setNewGift({...newGift, price: parseInt(e.target.value) || 0})} />
