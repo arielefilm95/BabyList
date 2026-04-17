@@ -53,6 +53,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribeProfile;
   }, [user]);
 
+  useEffect(() => {
+    if (!user || !profile || profile.role) return;
+
+    void setDoc(
+      doc(db, 'profiles', user.uid),
+      { role: 'admin' },
+      { merge: true }
+    ).catch((error) => {
+      console.error('Error backfilling legacy profile role:', error);
+    });
+  }, [user, profile]);
+
   const loginWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider();
@@ -136,7 +148,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  const isAdmin = profile?.role === 'admin';
+  const isAdmin = Boolean(profile && (profile.role === 'admin' || !profile.role));
 
   return (
     <AuthContext.Provider value={{ user, profile, isAdmin, isAuthReady, loginWithGoogle, loginWithEmailOrUsername, registerWithEmailAndPasswordAndUsername, logout, deleteUserAccount }}>

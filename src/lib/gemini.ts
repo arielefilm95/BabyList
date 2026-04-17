@@ -1,8 +1,11 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const geminiApiKey = process.env.GEMINI_API_KEY || '';
+const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
-export const geminiModel = "gemini-3-flash-preview";
+export const isGeminiConfigured = Boolean(geminiApiKey);
+
+export const geminiModel = 'gemini-3-flash-preview';
 
 export const systemInstruction = `
 Eres un asistente experto en puericultura, cálido y empático, diseñado para apoyar a padres primerizos (especialmente a Pedrito y Vanessa).
@@ -12,6 +15,10 @@ Si te preguntan sobre la aplicación, recuerda que tiene una lista de regalos (W
 `;
 
 export async function askGemini(prompt: string) {
+  if (!isGeminiConfigured) {
+    return 'La IA no está configurada todavía. Agrega GEMINI_API_KEY para habilitar el asistente.';
+  }
+
   try {
     const response = await ai.models.generateContent({
       model: geminiModel,
@@ -22,7 +29,7 @@ export async function askGemini(prompt: string) {
     });
     return response.text;
   } catch (error) {
-    console.error("Error calling Gemini:", error);
-    return "Lo siento, tuve un problema al procesar tu consulta. Por favor, intenta de nuevo.";
+    console.error('Error calling Gemini:', error);
+    return 'Lo siento, tuve un problema al procesar tu consulta. Por favor, intenta de nuevo.';
   }
 }

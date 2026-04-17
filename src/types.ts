@@ -69,9 +69,10 @@ export interface Profile {
   pregnancyStartDate: string;
   gestationWeekAtStart?: number;
   gestationDaysAtStart?: number;
-  role: 'admin' | 'user';
+  role?: 'admin' | 'user';
   createdAt: any;
   hasSeededWishlist?: boolean;
+  wishlistCatalogVersion?: number;
   hasSeededTasks?: boolean;
   hasCleanedLegacyWishlistImages?: boolean;
 }

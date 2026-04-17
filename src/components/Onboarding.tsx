@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { db } from '../lib/firebase';
 import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
 import { useAuth } from '../lib/AuthContext';
-import { MASTER_GIFTS, MASTER_TASKS } from '../constants';
+import { MASTER_GIFTS, MASTER_TASKS, TASK_CATEGORIES } from '../constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -254,7 +254,7 @@ export const Onboarding = () => {
             Marca los elementos que ya tienes o las tareas que ya completaste. Así tu BabyPlan estará actualizado desde el primer día.
           </p>
           <div className="max-h-72 overflow-y-auto space-y-4 pr-2">
-            {['Bebé', 'Mamá', 'Casa', 'Alimentación', 'Hospital', 'Trámites', 'Misiones'].map(category => (
+            {TASK_CATEGORIES.map(category => (
               <div key={category}>
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`w-2 h-2 rounded-full ${
