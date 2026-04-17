@@ -2,6 +2,93 @@ export const WISHLIST_CATEGORIES = ['Bebé', 'Mamá', 'Habitación y ambiente', 
 export const TASK_CATEGORIES = ['Bebé', 'Mamá', 'Casa', 'Alimentación', 'Hospital', 'Trámites', 'Misiones'] as const;
 export const WISHLIST_CATALOG_VERSION = 3;
 
+export const DONATION_CATEGORIES = ['Ropa', 'Juguetes', 'Alimentación', 'Cuna y mueble', 'Paseo y transporte', 'Higiene y salud', 'Otros'] as const;
+export const DONATION_CONDITIONS = ['Nuevo', 'Como nuevo', 'Bueno', 'Regular'] as const;
+
+export const CHILEAN_REGIONS = [
+  {
+    name: 'Metropolitana de Santiago',
+    cities: ['Santiago', 'Cerro Navia', 'Conchalí', 'El Bosque', 'Estación Central', 'Huechuraba', 'Independencia', 'La Cisterna', 'La Florida', 'La Granja', 'La Pintana', 'La Reina', 'Las Condes', 'Lo Barnechea', 'Lo Espejo', 'Lo Prado', 'Macul', 'Maipú', 'Ñuñoa', 'Pedro Aguirre Cerda', 'Peñalolén', 'Providencia', 'Pudahuel', 'Quilicura', 'Quinta Normal', 'Recoleta', 'Renca', 'San Joaquín', 'San Miguel', 'San Ramón', 'Vitacura'],
+  },
+  {
+    name: 'Valparaíso',
+    cities: ['Valparaíso', 'Viña del Mar', 'Concón', 'Quilpué', 'Villa Alemana', 'San Antonio', 'Quillota', 'Calera', 'Los Andes', 'San Felipe', 'Limache', 'Olmué'],
+  },
+  {
+    name: 'Biobío',
+    cities: ['Concepción', 'Talcahuano', 'Chiguayante', 'Penco', 'Tomé', 'Coronel', 'Los Ángeles', 'Chillán', 'Los芒.', 'San Carlos'],
+  },
+  {
+    name: 'La Araucanía',
+    cities: ['Temuco', 'Padre Las Casas', 'Villarrica', 'Pucón', 'Angol', 'Victoria'],
+  },
+  {
+    name: 'Maule',
+    cities: ['Talca', 'Curicó', 'Linares', 'Constitución', 'Cauquenes'],
+  },
+  {
+    name: 'Coquimbo',
+    cities: ['La Serena', 'Coquimbo', 'Ovalle', 'Illapel', 'Vicuña', 'Los Vilos'],
+  },
+  {
+    name: 'Los Lagos',
+    cities: ['Puerto Montt', 'Puerto Varas', 'Osorno', 'Castro', 'Ancud', 'Frutillar'],
+  },
+  {
+    name: 'Aysén',
+    cities: ['Coyhaique', 'Puerto Aysén', 'Chile Chico', ' Cochrane'],
+  },
+  {
+    name: 'Magallanes',
+    cities: ['Punta Arenas', 'Puerto Natales', 'Porvenir', 'Cabo de Hornos'],
+  },
+  {
+    name: 'Antofagasta',
+    cities: ['Antofagasta', 'Calama', 'Tocopilla', 'María Elena'],
+  },
+  {
+    name: 'Atacama',
+    cities: ['Copiapó', 'Caldera', 'Tierra Amarilla', 'Chañaral', 'Vallenar'],
+  },
+  {
+    name: 'Coquimbo',
+    cities: ['La Serena', 'Coquimbo', 'Ovalle', 'Illapel', 'Vicuña', 'Los Vilos', 'Salamanca'],
+  },
+  {
+    name: 'O Higgins',
+    cities: ['Rancagua', 'San Fernando', 'Pichilemu', 'Santa Cruz', 'Graneros', 'Machalí'],
+  },
+  {
+    name: 'Ñuble',
+    cities: ['Chillán', 'San Carlos', 'Chillán Viejo', 'Bulnes', 'Quillón', 'San Nicolás'],
+  },
+  {
+    name: 'Tarapacá',
+    cities: ['Iquique', 'Alto Hospicio', 'Pozo Almonte', 'Pica'],
+  },
+  {
+    name: 'Arica y Parinacota',
+    cities: ['Arica', 'Putre', 'General Lagos'],
+  },
+] as const;
+
+export const DONATION_CATEGORY_CONFIG: Record<string, { emoji: string; color: string; bgColor: string; textColor: string }> = {
+  'Ropa': { emoji: '👗', color: 'pink', bgColor: 'bg-pink-50', textColor: 'text-pink-600' },
+  'Juguetes': { emoji: '🧸', color: 'amber', bgColor: 'bg-amber-50', textColor: 'text-amber-600' },
+  'Alimentación': { emoji: '🍼', color: 'orange', bgColor: 'bg-orange-50', textColor: 'text-orange-600' },
+  'Cuna y mueble': { emoji: '🛏️', color: 'indigo', bgColor: 'bg-indigo-50', textColor: 'text-indigo-600' },
+  'Paseo y transporte': { emoji: '🚼', color: 'teal', bgColor: 'bg-teal-50', textColor: 'text-teal-600' },
+  'Higiene y salud': { emoji: '🧴', color: 'cyan', bgColor: 'bg-cyan-50', textColor: 'text-cyan-600' },
+  'Otros': { emoji: '📦', color: 'stone', bgColor: 'bg-stone-50', textColor: 'text-stone-600' },
+};
+
+export const DONATION_CONDITION_CONFIG: Record<string, { color: string; bgColor: string }> = {
+  'Nuevo': { color: 'emerald', bgColor: 'bg-emerald-50' },
+  'Como nuevo': { color: 'teal', bgColor: 'bg-teal-50' },
+  'Bueno': { color: 'amber', bgColor: 'bg-amber-50' },
+  'Regular': { color: 'stone', bgColor: 'bg-stone-50' },
+};
+
 type MasterGiftTemplate = {
   catalogKey: string;
   name: string;

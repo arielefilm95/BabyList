@@ -26,6 +26,7 @@ import {
   Circle,
   ExternalLink,
   Gift as GiftIcon,
+  Heart,
   LayoutDashboard,
   ListChecks,
   Lock,
@@ -54,6 +55,7 @@ import {
 } from 'recharts';
 
 import { Onboarding } from './components/Onboarding';
+import { Donations } from './components/Donations';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -632,6 +634,15 @@ const Navbar = ({
               >
                 Asistente IA
               </button>
+              <button
+                onClick={() => setActiveTab('donations')}
+                className={`text-sm font-medium px-3 py-2 rounded-md transition-colors flex items-center gap-1 ${
+                  activeTab === 'donations' ? 'bg-stone-100 text-stone-800' : 'text-stone-600 hover:bg-stone-50'
+                }`}
+              >
+                <Heart className="w-4 h-4" />
+                Donaciones
+              </button>
 
             </>
           )}
@@ -788,6 +799,10 @@ const MobileNav = ({
       <button onClick={() => setActiveTab('assistant')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${activeTab === 'assistant' ? 'text-teal-600' : 'text-stone-400'}`}>
         <MessageSquare className="w-5 h-5" />
         <span className="text-[10px] font-bold">IA</span>
+      </button>
+      <button onClick={() => setActiveTab('donations')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${activeTab === 'donations' ? 'text-teal-600' : 'text-stone-400'}`}>
+        <Heart className="w-5 h-5" />
+        <span className="text-[10px] font-bold">Donar</span>
       </button>
 
     </div>
@@ -2481,6 +2496,10 @@ export default function App() {
                   parent2Name={effectiveProfile?.parent2Name}
                   parent2Gender={effectiveProfile?.parent2Gender}
                 />
+              )}
+
+              {activeTab === 'donations' && (
+                <Donations />
               )}
 
 

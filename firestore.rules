@@ -112,6 +112,27 @@ service cloud.firestore {
              data.userId is string;
     }
 
+    function isValidDonation(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.description is string && data.description.size() < 1000 &&
+             data.category in ['Ropa', 'Juguetes', 'Alimentación', 'Cuna y mueble', 'Paseo y transporte', 'Higiene y salud', 'Otros'] &&
+             data.condition in ['Nuevo', 'Como nuevo', 'Bueno', 'Regular'] &&
+             data.quantity is number && data.quantity > 0 &&
+             data.imageUrls is list &&
+             data.location.city is string && data.location.city.size() > 0 &&
+             data.location.commune is string && data.location.commune.size() > 0 &&
+             data.status in ['disponible', 'reservado', 'donado'];
+    }
+
+    function isValidDonationRequest(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.description is string && data.description.size() < 1000 &&
+             data.category in ['Ropa', 'Juguetes', 'Alimentación', 'Cuna y mueble', 'Paseo y transporte', 'Higiene y salud', 'Otros'] &&
+             data.location.city is string && data.location.city.size() > 0 &&
+             data.location.commune is string && data.location.commune.size() > 0 &&
+             data.status in ['activo', 'cubierto'];
+    }
+
     match /profiles/{userId} {
       allow read: if true;
       allow create: if isOwner(userId) && isValidProfile(request.resource.data);
@@ -155,6 +176,26 @@ service cloud.firestore {
                     request.resource.data.uid == request.auth.uid &&
                     request.resource.data.email is string;
       allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+
+    match /donations/{donationId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidDonation(request.resource.data);
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.donorId) ||
+        (!isOwner(resource.data.donorId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reservedBy', 'reservedByName']))
+      );
+      allow delete: if isOwner(resource.data.donorId);
+    }
+
+    match /donationRequests/{requestId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidDonationRequest(request.resource.data);
+      allow update: if isAuthenticated() && (
+        isOwner(resource.data.requesterId) ||
+        (!isOwner(resource.data.requesterId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+      );
+      allow delete: if isOwner(resource.data.requesterId);
     }
   }
 }

@@ -69,3 +69,44 @@ export interface Profile {
   hasSeededTasks?: boolean;
   hasCleanedLegacyWishlistImages?: boolean;
 }
+
+export type DonationCategory = 'Ropa' | 'Juguetes' | 'Alimentación' | 'Cuna y mueble' | 'Paseo y transporte' | 'Higiene y salud' | 'Otros';
+export type DonationCondition = 'Nuevo' | 'Como nuevo' | 'Bueno' | 'Regular';
+export type DonationStatus = 'disponible' | 'reservado' | 'donado';
+
+export interface Donation {
+  id: string;
+  donorId: string;
+  donorName: string;
+  donorBabyDueDate?: string;
+  title: string;
+  description: string;
+  category: DonationCategory;
+  condition: DonationCondition;
+  quantity: number;
+  imageUrls: string[];
+  location: {
+    city: string;
+    commune: string;
+  };
+  status: DonationStatus;
+  reservedBy?: string;
+  reservedByName?: string;
+  createdAt: any;
+}
+
+export interface DonationRequest {
+  id: string;
+  requesterId: string;
+  requesterName: string;
+  requesterBabyDueDate?: string;
+  title: string;
+  description: string;
+  category: DonationCategory;
+  location: {
+    city: string;
+    commune: string;
+  };
+  status: 'activo' | 'cubierto';
+  createdAt: any;
+}
