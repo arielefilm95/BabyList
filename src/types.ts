@@ -63,6 +63,7 @@ export interface Profile {
   parent2Name: string;
   parent2Gender?: 'male' | 'female' | 'other';
   babyNames: string[];
+  babyName?: string;
   babyCount: number;
   dueDate: string;
   pregnancyStartDate: string;
@@ -70,4 +71,7 @@ export interface Profile {
   gestationDaysAtStart?: number;
   role: 'admin' | 'user';
   createdAt: any;
+  hasSeededWishlist?: boolean;
+  hasSeededTasks?: boolean;
+  hasCleanedLegacyWishlistImages?: boolean;
 }

@@ -56,7 +56,9 @@ export const Onboarding = () => {
         ...formData,
         role: 'admin', // First user is admin of their own profile
         createdAt: serverTimestamp(),
-        hasSeededWishlist: true
+        hasSeededWishlist: true,
+        hasSeededTasks: true,
+        hasCleanedLegacyWishlistImages: true,
       });
 
       // Seed the wishlist automatically

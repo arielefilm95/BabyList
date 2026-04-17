@@ -136,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }
 
-  const isAdmin = profile?.role === 'admin' || user?.email === 'aaes17@gmail.com';
+  const isAdmin = profile?.role === 'admin';
 
   return (
     <AuthContext.Provider value={{ user, profile, isAdmin, isAuthReady, loginWithGoogle, loginWithEmailOrUsername, registerWithEmailAndPasswordAndUsername, logout, deleteUserAccount }}>

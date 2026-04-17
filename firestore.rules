@@ -22,10 +22,11 @@ service cloud.firestore {
     // Document ID: auto-generated
     // Fields:
     //   - title: string (required)
-    //   - category: string (required, enum: Pedrito, Vanessa, Hospital, Misiones)
+    //   - category: string (required, enum: Bebé, Mamá, Casa, Alimentación, Hospital, Trámites, Misiones)
     //   - phase: string (required, enum: Early, Mid, Late)
     //   - isCompleted: bool (required)
     //   - priority: string (required, enum: Low, Medium, High)
+    //   - dueDate: string (optional, ISO)
     //
     // Collection: notifications
     // Document ID: auto-generated
@@ -61,15 +62,13 @@ service cloud.firestore {
     //
     // ===============================================================
 
-    // Helper Functions
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      return isAuthenticated() && 
-        (request.auth.token.email == "aaes17@gmail.com" || 
-         get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == "admin");
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == "admin";
     }
 
     function isOwner(userId) {
@@ -93,8 +92,10 @@ service cloud.firestore {
 
     function isValidTask(data) {
       return data.title is string && data.title.size() > 0 && data.title.size() < 500 &&
-             data.category in ["Pedrito", "Vanessa", "Hospital", "Misiones"] &&
+             data.category in ["Bebé", "Mamá", "Casa", "Alimentación", "Hospital", "Trámites", "Misiones"] &&
              data.phase in ["Early", "Mid", "Late"] &&
+             (!('priority' in data) || data.priority in ["Low", "Medium", "High"]) &&
+             (!('dueDate' in data) || data.dueDate is string) &&
              data.isCompleted is bool;
     }
 
@@ -111,42 +112,36 @@ service cloud.firestore {
              data.userId is string;
     }
 
-    // Profiles Rules
     match /profiles/{userId} {
-      allow read: if true; // Publicly readable for sharing
+      allow read: if true;
       allow create: if isOwner(userId) && isValidProfile(request.resource.data);
-      allow update: if isOwner(userId) && isValidProfile(request.resource.data) && 
+      allow update: if isOwner(userId) && isValidProfile(request.resource.data) &&
                       (request.resource.data.role == resource.data.role || isAdmin());
 
-      // Wishlist Rules
       match /wishlist/{giftId} {
         allow read: if true;
-        allow update: if !isOwner(userId) && 
+        allow update: if !isOwner(userId) &&
                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isReserved', 'reservedBy', 'quantityReserved']) &&
                       (resource.data.isRepeatable || !resource.data.isReserved);
         allow write: if isOwner(userId) && isValidGift(request.resource.data);
         allow delete: if isOwner(userId);
       }
 
-      // Tasks Rules
       match /tasks/{taskId} {
         allow read, write: if isOwner(userId);
       }
 
-      // Notifications Rules
       match /notifications/{notificationId} {
         allow read: if isOwner(userId);
         allow create: if isValidNotification(request.resource.data);
         allow update: if isOwner(userId);
       }
 
-      // Photos Rules
       match /photos/{photoId} {
-        allow read: if true; // Publicly readable for gallery
+        allow read: if true;
         allow write: if isOwner(userId);
       }
 
-      // Settings Rules
       match /settings/{settingId} {
         allow read: if true;
         allow write: if isOwner(userId);
@@ -155,7 +150,7 @@ service cloud.firestore {
 
     match /usernames/{username} {
       allow read: if true;
-      allow create: if isAuthenticated() && 
+      allow create: if isAuthenticated() &&
                     request.resource.data.keys().hasAll(['email', 'uid']) &&
                     request.resource.data.uid == request.auth.uid &&
                     request.resource.data.email is string;

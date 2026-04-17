@@ -55,6 +55,11 @@ export const PREGNANCY_PHASES = [
     title: "Primer Trimestre",
     weeksLabel: "Semanas 1-12",
     shortTitle: "Trimestre 1",
+    weekStart: 1,
+    weekEnd: 12,
+    phase: 'Early' as const,
+    emoji: "🌱",
+    color: "rose",
     items: [
       "Confirmar embarazo",
       "Primera ecografía",
@@ -66,6 +71,11 @@ export const PREGNANCY_PHASES = [
     title: "Segundo Trimestre",
     weeksLabel: "Semanas 13-26",
     shortTitle: "Trimestre 2",
+    weekStart: 13,
+    weekEnd: 26,
+    phase: 'Mid' as const,
+    emoji: "🌿",
+    color: "amber",
     items: [
       "Ecografía morfológica",
       "Conocer el sexo (opcional)",
@@ -77,6 +87,11 @@ export const PREGNANCY_PHASES = [
     title: "Tercer Trimestre",
     weeksLabel: "Semanas 27-34",
     shortTitle: "Trimestre 3",
+    weekStart: 27,
+    weekEnd: 34,
+    phase: 'Mid' as const,
+    emoji: "🍃",
+    color: "teal",
     items: [
       "Clases de preparación al parto",
       "Comprar artículos esenciales",
@@ -88,6 +103,11 @@ export const PREGNANCY_PHASES = [
     title: "Recta Final",
     weeksLabel: "Semanas 35-Parto",
     shortTitle: "Parto",
+    weekStart: 35,
+    weekEnd: 42,
+    phase: 'Late' as const,
+    emoji: "🎀",
+    color: "violet",
     items: [
       "Preparar maleta del hospital",
       "Plan de parto",
@@ -175,4 +195,86 @@ export const MASTER_TASKS = [
   { title: 'Logística Alimentaria (Meal Prep)', category: 'Misiones', phase: 'Late', priority: 'High', isCompleted: false },
   { title: 'Investigar trámites (Registro Civil, Salud)', category: 'Misiones', phase: 'Mid', priority: 'High', isCompleted: false },
   { title: 'Curso de Primeros Auxilios (RCP)', category: 'Misiones', phase: 'Mid', priority: 'High', isCompleted: false }
+];
+
+// Category visual identity
+export const CATEGORY_CONFIG: Record<string, { emoji: string; color: string; bgColor: string; textColor: string }> = {
+  'Bebé':         { emoji: '👶', color: 'rose',   bgColor: 'bg-rose-50',   textColor: 'text-rose-600' },
+  'Mamá':         { emoji: '🤱', color: 'teal',   bgColor: 'bg-teal-50',   textColor: 'text-teal-600' },
+  'Casa':         { emoji: '🏠', color: 'amber',  bgColor: 'bg-amber-50',  textColor: 'text-amber-600' },
+  'Alimentación': { emoji: '🍼', color: 'orange', bgColor: 'bg-orange-50', textColor: 'text-orange-600' },
+  'Hospital':     { emoji: '🏥', color: 'blue',   bgColor: 'bg-blue-50',   textColor: 'text-blue-600' },
+  'Trámites':     { emoji: '📋', color: 'purple', bgColor: 'bg-purple-50', textColor: 'text-purple-600' },
+  'Misiones':     { emoji: '🎯', color: 'indigo', bgColor: 'bg-indigo-50', textColor: 'text-indigo-600' },
+};
+
+// Priority configuration
+export const PRIORITY_CONFIG: Record<string, { label: string; color: string; bgColor: string; dotColor: string; order: number }> = {
+  'High':   { label: 'Alta',    color: 'text-rose-600',  bgColor: 'bg-rose-50 border-rose-200',   dotColor: 'bg-rose-500',  order: 0 },
+  'Medium': { label: 'Media',   color: 'text-amber-600', bgColor: 'bg-amber-50 border-amber-200', dotColor: 'bg-amber-500', order: 1 },
+  'Low':    { label: 'Baja',    color: 'text-stone-500', bgColor: 'bg-stone-50 border-stone-200', dotColor: 'bg-stone-400', order: 2 },
+};
+
+// Phase label mapping
+export const PHASE_LABELS: Record<string, string> = {
+  'Early': 'Fase Temprana (S1-12)',
+  'Mid':   'Fase Media (S13-34)',
+  'Late':  'Fase Final (S35-Parto)',
+};
+
+// Baby development by week (selected notable weeks)
+export const BABY_DEVELOPMENT: Record<number, { size: string; weight: string; fact: string }> = {
+  4:  { size: '1 mm',    weight: '<1 g',     fact: 'El corazón comienza a latir.' },
+  8:  { size: '1.6 cm',  weight: '1 g',      fact: 'Se forman los deditos de manos y pies.' },
+  12: { size: '5.4 cm',  weight: '14 g',     fact: 'Puede abrir y cerrar los puños. Fin del primer trimestre.' },
+  16: { size: '11.6 cm', weight: '100 g',    fact: 'Ya puede chuparse el dedo. Las uñas están formadas.' },
+  20: { size: '25 cm',   weight: '300 g',    fact: '¡Puedes empezar a sentir los movimientos!' },
+  24: { size: '30 cm',   weight: '600 g',    fact: 'Reacciona a sonidos fuertes. Los pulmones se desarrollan.' },
+  28: { size: '37 cm',   weight: '1 kg',     fact: 'Abre los ojos por primera vez. Puede soñar (fase REM).' },
+  32: { size: '42 cm',   weight: '1.7 kg',   fact: 'Los huesos se endurecen. Practica la respiración.' },
+  36: { size: '47 cm',   weight: '2.7 kg',   fact: 'Casi listo. La mayoría se gira cabeza abajo.' },
+  38: { size: '49 cm',   weight: '3 kg',     fact: 'Considerado a término. ¡Puede nacer en cualquier momento!' },
+  40: { size: '51 cm',   weight: '3.4 kg',   fact: 'Fecha estimada de parto. El momento ha llegado. 💕' },
+};
+
+// Get development info for a given week (returns closest available)
+export const getBabyDevelopment = (week: number) => {
+  const keys = Object.keys(BABY_DEVELOPMENT).map(Number).sort((a, b) => a - b);
+  let closest = keys[0];
+  for (const k of keys) {
+    if (k <= week) closest = k;
+    else break;
+  }
+  return { week: closest, ...BABY_DEVELOPMENT[closest] };
+};
+
+// Pregnancy tips by trimester
+export const PREGNANCY_TIPS: { phase: string; tips: string[] }[] = [
+  {
+    phase: 'Early',
+    tips: [
+      '💊 Toma ácido fólico (al menos 400 mcg/día).',
+      '🚫 Evita alcohol, tabaco y alimentos crudos.',
+      '💤 Es normal sentir mucho sueño — descansa lo que necesites.',
+      '📋 Agenda tu primera ecografía entre la semana 7-8.',
+    ]
+  },
+  {
+    phase: 'Mid',
+    tips: [
+      '🏃‍♀️ Mantén actividad física moderada (caminar, yoga prenatal).',
+      '📸 ¡Es un buen momento para la sesión de fotos de embarazo!',
+      '🛒 Empieza a investigar y comparar productos esenciales.',
+      '🧠 Informa en tu trabajo y revisa tu licencia de maternidad/paternidad.',
+    ]
+  },
+  {
+    phase: 'Late',
+    tips: [
+      '🧳 Prepara la maleta del hospital con anticipación (semana 35).',
+      '📝 Escribe tu plan de parto y compártelo con tu equipo médico.',
+      '🍲 Congela comidas preparadas para las primeras semanas postparto.',
+      '🧘 Practica técnicas de respiración y relajación para el parto.',
+    ]
+  }
 ];
