@@ -51,6 +51,23 @@ export const formatIsoDate = (value?: string) => {
   return parsed ? DATE_FORMATTER.format(parsed) : 'Sin fecha';
 };
 
+export const calculateDueDateFromCurrentGestation = (
+  currentWeek?: number,
+  currentDays?: number,
+  referenceDateStr?: string
+) => {
+  if (currentWeek === undefined || Number.isNaN(currentWeek) || currentWeek <= 0) {
+    return undefined;
+  }
+
+  const safeDays = Number.isNaN(currentDays) ? 0 : Math.max(0, Math.min(6, currentDays || 0));
+  const referenceDate = parseIsoDate(referenceDateStr) || normalizeDate(new Date());
+  const elapsedDays = currentWeek * 7 + safeDays;
+  const remainingDays = 280 - elapsedDays;
+
+  return toIsoDate(shiftDays(referenceDate, remainingDays));
+};
+
 export const getCurrentPregnancyWeek = (
   dueDateStr?: string,
   startWeek?: number,
@@ -60,8 +77,13 @@ export const getCurrentPregnancyWeek = (
   if (!dueDateStr) return { weeks: 0, days: 0 };
 
   const today = normalizeDate(new Date());
+  const hasMeaningfulStartSnapshot =
+    Boolean(startDateStr) &&
+    startWeek !== undefined &&
+    !Number.isNaN(startWeek) &&
+    startWeek > 0;
 
-  if (startDateStr && startWeek !== undefined) {
+  if (hasMeaningfulStartSnapshot && startDateStr) {
     const startDate = parseIsoDate(startDateStr);
     if (!startDate) return { weeks: 0, days: 0 };
 

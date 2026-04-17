@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   addDoc,
   collection,
+  deleteField,
   deleteDoc,
   doc,
   getDoc,
@@ -128,6 +129,12 @@ const PARENT_ROLE_LABELS: Record<NonNullable<Profile['parent1Gender']>, string> 
   male: 'papa',
   other: 'progenitor',
 };
+
+const PARENT_GENDER_OPTIONS: Array<{ value: NonNullable<Profile['parent1Gender']>; label: string }> = [
+  { value: 'female', label: 'Mujer' },
+  { value: 'male', label: 'Hombre' },
+  { value: 'other', label: 'Otro' },
+];
 
 const formatFamilyAdult = (name?: string, gender?: Profile['parent1Gender']) => {
   const cleanName = name?.trim();
@@ -430,20 +437,52 @@ const Navbar = ({
   const [isResettingTasks, setIsResettingTasks] = useState(false);
   const [settingsForm, setSettingsForm] = useState({
     parent1Name: '',
+    parent1Gender: 'female' as NonNullable<Profile['parent1Gender']>,
     parent2Name: '',
+    parent2Gender: 'male' as NonNullable<Profile['parent2Gender']>,
+    babyCount: 1,
     babyNames: [''],
     dueDate: '',
   });
 
   useEffect(() => {
     if (!profile) return;
+    const nextBabyNames = profile.babyNames?.length ? [...profile.babyNames] : [profile.babyName || ''];
+    const nextBabyCount = profile.babyCount || Math.max(1, nextBabyNames.length);
+
+    while (nextBabyNames.length < nextBabyCount) {
+      nextBabyNames.push('');
+    }
+
     setSettingsForm({
       parent1Name: profile.parent1Name || '',
+      parent1Gender: profile.parent1Gender || 'female',
       parent2Name: profile.parent2Name || '',
-      babyNames: profile.babyNames || [''],
+      parent2Gender: profile.parent2Gender || 'male',
+      babyCount: nextBabyCount,
+      babyNames: nextBabyNames,
       dueDate: profile.dueDate || '',
     });
   }, [profile]);
+
+  const handleSettingsBabyCountChange = (count: number) => {
+    setSettingsForm((current) => {
+      const nextNames = [...current.babyNames];
+      if (count > nextNames.length) {
+        for (let index = nextNames.length; index < count; index += 1) {
+          nextNames.push('');
+        }
+      } else {
+        nextNames.splice(count);
+      }
+
+      return {
+        ...current,
+        babyCount: count,
+        babyNames: nextNames,
+      };
+    });
+  };
 
   useEffect(() => {
     if (!isAdmin || !user) return;
@@ -479,9 +518,37 @@ const Navbar = ({
 
   const saveSettings = async () => {
     if (!user || !profile) return;
+    const nextBabyNames = settingsForm.babyNames.slice(0, settingsForm.babyCount).map((name) => name.trim());
+
+    if (!settingsForm.parent1Name.trim()) {
+      alert('El nombre del adulto 1 es obligatorio.');
+      return;
+    }
+
+    if (!settingsForm.dueDate) {
+      alert('La fecha probable de parto es obligatoria.');
+      return;
+    }
+
+    if (nextBabyNames.some((name) => !name)) {
+      alert('Completa todos los nombres de los bebes antes de guardar.');
+      return;
+    }
 
     try {
-      await updateDoc(doc(db, 'profiles', user.uid), settingsForm);
+      await updateDoc(doc(db, 'profiles', user.uid), {
+        parent1Name: settingsForm.parent1Name.trim(),
+        parent1Gender: settingsForm.parent1Gender,
+        parent2Name: settingsForm.parent2Name.trim(),
+        parent2Gender: settingsForm.parent2Gender,
+        babyCount: settingsForm.babyCount,
+        babyNames: nextBabyNames,
+        babyName: nextBabyNames[0] || '',
+        dueDate: settingsForm.dueDate,
+        pregnancyStartDate: deleteField(),
+        gestationWeekAtStart: deleteField(),
+        gestationDaysAtStart: deleteField(),
+      });
       setShowSettingsDialog(false);
     } catch (error) {
       console.error(error);
@@ -523,34 +590,94 @@ const Navbar = ({
   return (
     <>
       <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Configuración de Cuenta</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Tu Nombre</Label>
-              <Input value={settingsForm.parent1Name} onChange={(e) => setSettingsForm({ ...settingsForm, parent1Name: e.target.value })} />
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Adulto 1</Label>
+                <Input value={settingsForm.parent1Name} onChange={(e) => setSettingsForm({ ...settingsForm, parent1Name: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Genero adulto 1</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {PARENT_GENDER_OPTIONS.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={settingsForm.parent1Gender === option.value ? 'default' : 'outline'}
+                      size="sm"
+                      className="text-[10px] uppercase font-bold"
+                      onClick={() => setSettingsForm({ ...settingsForm, parent1Gender: option.value })}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Adulto 2 (opcional)</Label>
+                <Input value={settingsForm.parent2Name} onChange={(e) => setSettingsForm({ ...settingsForm, parent2Name: e.target.value })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Genero adulto 2</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {PARENT_GENDER_OPTIONS.map((option) => (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant={settingsForm.parent2Gender === option.value ? 'default' : 'outline'}
+                      size="sm"
+                      className="text-[10px] uppercase font-bold"
+                      onClick={() => setSettingsForm({ ...settingsForm, parent2Gender: option.value })}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="space-y-2">
-              <Label>Nombre de tu pareja (opcional)</Label>
-              <Input value={settingsForm.parent2Name} onChange={(e) => setSettingsForm({ ...settingsForm, parent2Name: e.target.value })} />
+              <Label>Cuantos bebes vienen en camino</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3].map((count) => (
+                  <Button
+                    key={count}
+                    type="button"
+                    variant={settingsForm.babyCount === count ? 'default' : 'outline'}
+                    onClick={() => handleSettingsBabyCountChange(count)}
+                  >
+                    {count}
+                  </Button>
+                ))}
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Nombres del Bebé</Label>
-              <Input
-                value={settingsForm.babyNames[0] || ''}
-                onChange={(e) => {
-                  const nextNames = [...settingsForm.babyNames];
-                  nextNames[0] = e.target.value;
-                  setSettingsForm({ ...settingsForm, babyNames: nextNames });
-                }}
-              />
+            <div className="space-y-3">
+              <Label>Nombres del bebe</Label>
+              {Array.from({ length: settingsForm.babyCount }).map((_, index) => (
+                <Input
+                  key={index}
+                  value={settingsForm.babyNames[index] || ''}
+                  placeholder={`Bebe ${index + 1}`}
+                  onChange={(e) => {
+                    const nextNames = [...settingsForm.babyNames];
+                    nextNames[index] = e.target.value;
+                    setSettingsForm({ ...settingsForm, babyNames: nextNames });
+                  }}
+                />
+              ))}
             </div>
             <div className="space-y-2">
               <Label>Fecha Probable de Parto</Label>
               <Input type="date" value={settingsForm.dueDate} onChange={(e) => setSettingsForm({ ...settingsForm, dueDate: e.target.value })} />
             </div>
+            <p className="text-xs text-stone-500">
+              Los datos para transferencias se siguen editando desde el dashboard.
+            </p>
             <div className="pt-4 border-t border-stone-200">
               <h4 className="text-sm font-bold text-amber-600 mb-2">Herramientas</h4>
               <Button variant="outline" className="w-full mb-2" onClick={resetTasks} disabled={isResettingTasks}>

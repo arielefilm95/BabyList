@@ -59,7 +59,7 @@ export interface Profile {
   babyName?: string;
   babyCount: number;
   dueDate: string;
-  pregnancyStartDate: string;
+  pregnancyStartDate?: string;
   gestationWeekAtStart?: number;
   gestationDaysAtStart?: number;
   role?: 'admin' | 'user';
