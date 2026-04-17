@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { db } from '../lib/firebase';
 import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
 import { useAuth } from '../lib/AuthContext';
-import { MASTER_GIFTS, MASTER_TASKS, TASK_CATEGORIES } from '../constants';
+import { MASTER_GIFTS, MASTER_TASKS, TASK_CATEGORIES, WISHLIST_CATALOG_VERSION } from '../constants';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,22 +48,51 @@ export const Onboarding = () => {
     setFormData({ ...formData, babyNames: newNames });
   };
 
+  const normalizeComparableText = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+
+  const templateNameMatches = (left: string, right: string) => {
+    const normalizedLeft = normalizeComparableText(left);
+    const normalizedRight = normalizeComparableText(right);
+
+    return (
+      normalizedLeft === normalizedRight ||
+      normalizedLeft.includes(normalizedRight) ||
+      normalizedRight.includes(normalizedLeft)
+    );
+  };
+
   const handleSubmit = async () => {
     if (!user) return;
     setLoading(true);
     try {
+      const completedTaskTemplates = MASTER_TASKS.filter((task) => formData.completedTasks.includes(task.title));
+
       await setDoc(doc(db, 'profiles', user.uid), {
         ...formData,
         role: 'admin', // First user is admin of their own profile
         createdAt: serverTimestamp(),
         hasSeededWishlist: true,
+        wishlistCatalogVersion: WISHLIST_CATALOG_VERSION,
         hasSeededTasks: true,
         hasCleanedLegacyWishlistImages: true,
       });
 
       // Seed the wishlist automatically
       for (const gift of MASTER_GIFTS) {
-        const isCompleted = formData.completedTasks.includes(gift.name);
+        const isCompleted = completedTaskTemplates.some((task) => {
+          if (gift.catalogKey && task.catalogKey) {
+            return gift.catalogKey === task.catalogKey;
+          }
+
+          return templateNameMatches(task.title, gift.name);
+        });
+
         await addDoc(collection(db, 'profiles', user.uid, 'wishlist'), {
           ...gift,
           isReserved: isCompleted,

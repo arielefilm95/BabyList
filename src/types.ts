@@ -1,5 +1,6 @@
 export interface Gift {
   id: string;
+  catalogKey?: string;
   name: string;
   category: string;
   imageUrl?: string;
@@ -19,6 +20,7 @@ export interface CartItem {
 
 export interface Task {
   id: string;
+  catalogKey?: string;
   title: string;
   category: string;
   phase: 'Early' | 'Mid' | 'Late';
@@ -36,15 +38,6 @@ export interface AppNotification {
   createdAt: any;
   isRead: boolean;
   targetId?: string;
-}
-
-export interface GalleryPhoto {
-  id: string;
-  url: string;
-  description: string;
-  date: string;
-  createdAt: any;
-  userId: string;
 }
 
 export interface BankDetails {

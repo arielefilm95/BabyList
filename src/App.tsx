@@ -22,12 +22,10 @@ import {
   Baby,
   Bell,
   Calendar,
-  Camera,
   CheckCircle2,
   Circle,
   ExternalLink,
   Gift as GiftIcon,
-  Image as ImageIcon,
   LayoutDashboard,
   ListChecks,
   Lock,
@@ -81,6 +79,7 @@ import {
   PREGNANCY_PHASES,
   PREGNANCY_TIPS,
   PRIORITY_CONFIG,
+  RETIRED_WISHLIST_GIFT_NAMES,
   TASK_CATEGORIES,
   WISHLIST_CATEGORIES,
   getBabyDevelopment,
@@ -101,9 +100,12 @@ import {
   resolveTaskDueDate,
 } from './lib/pregnancy';
 import { useProfileCollections } from './lib/useProfileCollections';
-import type { AppNotification, BankDetails, CartItem, GalleryPhoto, Gift, Profile, Task } from './types';
+import type { AppNotification, BankDetails, CartItem, Gift, Profile, Task } from './types';
 
 const TASK_PHASES = ['Early', 'Mid', 'Late'] as const;
+const ALL_WISHLIST_FILTER = 'All' as const;
+const DEFAULT_WISHLIST_CATEGORY = WISHLIST_CATEGORIES[0];
+type WishlistCategory = (typeof WISHLIST_CATEGORIES)[number];
 const AI_SUGGESTIONS = [
   '¿Qué es realmente esencial comprar antes del parto?',
   '¿Qué conviene tener listo para la maleta del hospital?',
@@ -119,6 +121,31 @@ const normalizeComparableText = (value: string) =>
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 
+const PARENT_ROLE_LABELS: Record<NonNullable<Profile['parent1Gender']>, string> = {
+  female: 'mama',
+  male: 'papa',
+  other: 'progenitor',
+};
+
+const formatFamilyAdult = (name?: string, gender?: Profile['parent1Gender']) => {
+  const cleanName = name?.trim();
+  if (!cleanName) return null;
+
+  const role = gender ? PARENT_ROLE_LABELS[gender] : 'adulto';
+  return `${cleanName} (${role})`;
+};
+
+const formatAssistantResponse = (value: string) =>
+  value
+    .replace(/\r\n?/g, '\n')
+    .replace(/^\s{0,3}#{1,6}\s*/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/__(.*?)__/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^\s*[-*]\s+/gm, '- ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
 const templateNameMatches = (left: string, right: string) => {
   const normalizedLeft = normalizeComparableText(left);
   const normalizedRight = normalizeComparableText(right);
@@ -130,11 +157,73 @@ const templateNameMatches = (left: string, right: string) => {
   );
 };
 
-const findMatchingGiftTemplate = (giftName: string) =>
-  MASTER_GIFTS.find((template) => templateNameMatches(template.name, giftName));
+const WISHLIST_CATEGORY_KEYWORDS: Record<WishlistCategory, string[]> = {
+  'Bebé': ['bebe', 'cuna', 'colecho', 'colchon', 'coche', 'stroller', 'silla', 'banera', 'termometro', 'body', 'conjuntos', 'pijama', 'osito', 'gorrito', 'calcetines', 'tuto', 'manta', 'panales', 'monitor', 'ruido'],
+  'Mamá': ['mama', 'embarazo', 'estrias', 'descanso', 'lactancia', 'lanolina', 'absorbentes', 'postparto', 'agua'],
+  'Habitación y ambiente': ['habitacion', 'ambiente', 'luz', 'humificador', 'humidificador'],
+  'Alimentación': ['mamadera', 'sacaleches', 'leche', 'formula', 'chupete', 'esterilizador', 'calentador', 'alimentacion'],
+};
 
-const findMatchingTaskTemplate = (taskTitle: string) =>
-  MASTER_TASKS.find((template) => templateNameMatches(template.title, taskTitle));
+const findMatchingGiftTemplate = (gift: Partial<Gift> | string) => {
+  if (typeof gift !== 'string' && gift.catalogKey) {
+    const byKey = MASTER_GIFTS.find((template) => template.catalogKey === gift.catalogKey);
+    if (byKey) return byKey;
+  }
+
+  const giftName = typeof gift === 'string' ? gift : gift.name || '';
+  return MASTER_GIFTS.find((template) => templateNameMatches(template.name, giftName));
+};
+
+const findMatchingTaskTemplate = (task: Partial<Task> | string) => {
+  if (typeof task !== 'string' && task.catalogKey) {
+    const byKey = MASTER_TASKS.find((template) => template.catalogKey === task.catalogKey);
+    if (byKey) return byKey;
+  }
+
+  const taskTitle = typeof task === 'string' ? task : task.title || '';
+  return MASTER_TASKS.find((template) => templateNameMatches(template.title, taskTitle));
+};
+
+const matchWishlistCategory = (category?: string) =>
+  WISHLIST_CATEGORIES.find((option) => normalizeComparableText(option) === normalizeComparableText(category || ''));
+
+const inferWishlistCategoryFromName = (giftName: string): WishlistCategory => {
+  const normalizedName = normalizeComparableText(giftName);
+
+  if (!normalizedName) {
+    return DEFAULT_WISHLIST_CATEGORY;
+  }
+
+  const template = findMatchingGiftTemplate(giftName);
+  if (template) {
+    return template.category as WishlistCategory;
+  }
+
+  for (const category of WISHLIST_CATEGORIES) {
+    if (WISHLIST_CATEGORY_KEYWORDS[category].some((keyword) => normalizedName.includes(keyword))) {
+      return category;
+    }
+  }
+
+  return DEFAULT_WISHLIST_CATEGORY;
+};
+
+const resolveWishlistCategory = (category?: string, giftName = '') =>
+  matchWishlistCategory(category) || inferWishlistCategoryFromName(giftName);
+
+const resolveGiftCatalogKey = (gift: Partial<Gift>) => findMatchingGiftTemplate(gift)?.catalogKey || gift.catalogKey;
+const resolveTaskCatalogKey = (task: Partial<Task>) => findMatchingTaskTemplate(task)?.catalogKey || task.catalogKey;
+
+const giftMatchesTask = (gift: Partial<Gift>, task: Partial<Task>) => {
+  const giftCatalogKey = resolveGiftCatalogKey(gift);
+  const taskCatalogKey = resolveTaskCatalogKey(task);
+
+  if (giftCatalogKey && taskCatalogKey) {
+    return giftCatalogKey === taskCatalogKey;
+  }
+
+  return templateNameMatches(gift.name || '', task.title || '');
+};
 
 const createNotification = async (
   userId: string,
@@ -543,14 +632,7 @@ const Navbar = ({
               >
                 Asistente IA
               </button>
-              <button
-                onClick={() => setActiveTab('gallery')}
-                className={`text-sm font-medium px-3 py-2 rounded-md transition-colors ${
-                  activeTab === 'gallery' ? 'bg-stone-100 text-stone-800' : 'text-stone-600 hover:bg-stone-50'
-                }`}
-              >
-                Galería
-              </button>
+
             </>
           )}
         </div>
@@ -680,7 +762,7 @@ const MobileNav = ({
   onAddAction?: () => void;
 }) => {
   const { isAdmin } = useAuth();
-  const showAddButton = isAdmin && ['wishlist', 'checklists', 'gallery'].includes(activeTab);
+  const showAddButton = isAdmin && ['wishlist', 'checklists'].includes(activeTab);
 
   return (
     <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 px-1 py-1 z-50 flex justify-around items-center h-16">
@@ -707,10 +789,7 @@ const MobileNav = ({
         <MessageSquare className="w-5 h-5" />
         <span className="text-[10px] font-bold">IA</span>
       </button>
-      <button onClick={() => setActiveTab('gallery')} className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${activeTab === 'gallery' ? 'text-teal-600' : 'text-stone-400'}`}>
-        <ImageIcon className="w-5 h-5" />
-        <span className="text-[10px] font-bold">Galería</span>
-      </button>
+
     </div>
   );
 };
@@ -736,7 +815,7 @@ const Wishlist = ({
 }) => {
   const { isAdmin, profile, user } = useAuth();
   const isOwner = user?.uid === viewingUserId;
-  const [giftFilter, setGiftFilter] = useState<string>('All');
+  const [giftFilter, setGiftFilter] = useState<string>(ALL_WISHLIST_FILTER);
   const [editingGift, setEditingGift] = useState<Gift | null>(null);
   const [viewingGift, setViewingGift] = useState<Gift | null>(null);
   const [reserveQuantity, setReserveQuantity] = useState(1);
@@ -751,7 +830,7 @@ const Wishlist = ({
   });
 
   const filteredGifts = useMemo(
-    () => gifts.filter((gift) => giftFilter === 'All' || gift.category === giftFilter),
+    () => gifts.filter((gift) => giftFilter === ALL_WISHLIST_FILTER || gift.category === giftFilter),
     [gifts, giftFilter]
   );
 
@@ -763,9 +842,17 @@ const Wishlist = ({
 
   const handleAddGift = async () => {
     if (!viewingUserId) return;
+    const trimmedName = newGift.name?.trim();
+    if (!trimmedName) return;
+
+    const template = findMatchingGiftTemplate({ name: trimmedName });
+
     try {
       await addDoc(collection(db, 'profiles', viewingUserId, 'wishlist'), {
         ...newGift,
+        name: trimmedName,
+        category: resolveWishlistCategory(newGift.category, trimmedName),
+        catalogKey: template?.catalogKey,
         isReserved: false,
         quantityReserved: 0,
       });
@@ -786,9 +873,18 @@ const Wishlist = ({
 
   const handleEditGift = async () => {
     if (!editingGift || !viewingUserId) return;
+    const trimmedName = editingGift.name.trim();
+    if (!trimmedName) return;
+
+    const template = findMatchingGiftTemplate({ name: trimmedName, catalogKey: editingGift.catalogKey });
     try {
       const { id, ...payload } = editingGift;
-      await updateDoc(doc(db, 'profiles', viewingUserId, 'wishlist', id), payload);
+      await updateDoc(doc(db, 'profiles', viewingUserId, 'wishlist', id), {
+        ...payload,
+        name: trimmedName,
+        category: resolveWishlistCategory(editingGift.category, trimmedName),
+        catalogKey: template?.catalogKey,
+      });
       setEditingGift(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `profiles/${viewingUserId}/wishlist/${editingGift.id}`);
@@ -887,7 +983,7 @@ const Wishlist = ({
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {['All', ...WISHLIST_CATEGORIES].map((category) => (
+        {[ALL_WISHLIST_FILTER, ...WISHLIST_CATEGORIES].map((category) => (
           <button
             key={category}
             onClick={() => setGiftFilter(category)}
@@ -897,7 +993,7 @@ const Wishlist = ({
                 : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
             }`}
           >
-            {category === 'All' ? 'Todos' : category}
+            {category === ALL_WISHLIST_FILTER ? 'Todos' : category}
           </button>
         ))}
       </div>
@@ -1402,7 +1498,7 @@ const Checklists = ({
   const decoratedTasks = useMemo<DecoratedTask[]>(() => {
     const taskList = tasks.map((task) => {
       const matchingGift = gifts.find(
-        (gift) => (gift.isReserved || (gift.quantityReserved || 0) > 0) && templateNameMatches(task.title, gift.name)
+        (gift) => (gift.isReserved || (gift.quantityReserved || 0) > 0) && giftMatchesTask(gift, task)
       );
       const giftedBy = matchingGift?.reservedBy || null;
       const displayDueDate = resolveTaskDueDate(task, profileDueDate);
@@ -1659,134 +1755,24 @@ const Checklists = ({
   );
 };
 
-const Gallery = ({
-  viewingUserId,
-  isAdding,
-  setIsAdding,
-}: {
-  viewingUserId: string | null;
-  isAdding: boolean;
-  setIsAdding: (value: boolean) => void;
-}) => {
-  const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [newPhoto, setNewPhoto] = useState({ description: '', date: new Date().toISOString().split('T')[0] });
-  const { user, isAdmin } = useAuth();
-
-  useEffect(() => {
-    if (!viewingUserId) return;
-    const photosQuery = query(collection(db, 'profiles', viewingUserId, 'photos'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(photosQuery, (snapshot) => {
-      setPhotos(snapshot.docs.map((photoDoc) => ({ id: photoDoc.id, ...photoDoc.data() } as GalleryPhoto)));
-    });
-    return unsubscribe;
-  }, [viewingUserId]);
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!viewingUserId) return;
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    try {
-      const storageRef = ref(storage, `gallery/${viewingUserId}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-
-      await addDoc(collection(db, 'profiles', viewingUserId, 'photos'), {
-        url,
-        description: newPhoto.description,
-        date: newPhoto.date,
-        createdAt: serverTimestamp(),
-        userId: viewingUserId,
-      });
-
-      setNewPhoto({ description: '', date: new Date().toISOString().split('T')[0] });
-      setIsAdding(false);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleDeletePhoto = async (photoId: string) => {
-    if (!viewingUserId) return;
-    try {
-      await deleteDoc(doc(db, 'profiles', viewingUserId, 'photos', photoId));
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-stone-800">Galería</h2>
-          <p className="text-sm text-stone-500">Recuerdos de esta etapa</p>
-        </div>
-        {user?.uid === viewingUserId && (
-          <Dialog open={isAdding} onOpenChange={setIsAdding}>
-            <DialogTrigger render={<Button className="hidden sm:flex bg-teal-600 hover:bg-teal-700" />}>
-              <Camera className="mr-2 h-4 w-4" /> Subir Foto
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nueva Foto</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <Input placeholder="Descripción" value={newPhoto.description} onChange={(e) => setNewPhoto({ ...newPhoto, description: e.target.value })} />
-                <Input type="date" value={newPhoto.date} onChange={(e) => setNewPhoto({ ...newPhoto, date: e.target.value })} />
-                <Input type="file" accept="image/*" onChange={handleFileUpload} disabled={isUploading} />
-                <Button disabled className="bg-teal-600">
-                  {isUploading ? 'Subiendo...' : 'Selecciona una imagen'}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <AnimatePresence>
-          {photos.map((photo) => (
-            <motion.div key={photo.id} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className="relative group rounded-2xl overflow-hidden border border-stone-200 bg-stone-100 aspect-square">
-              <img src={photo.url} alt={photo.description} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
-                <p className="text-white text-[10px] font-medium line-clamp-2">{photo.description || 'Sin descripción'}</p>
-                <p className="text-white/70 text-[8px] mt-1 uppercase tracking-wider font-bold">{photo.date}</p>
-              </div>
-              {isAdmin && (
-                <button onClick={() => void handleDeletePhoto(photo.id)} className="absolute top-2 right-2 p-1.5 bg-white/90 text-rose-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white">
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-      </div>
-
-      {photos.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-stone-200">
-          <ImageIcon className="h-12 w-12 text-stone-200 mx-auto mb-4" />
-          <p className="text-stone-400 text-sm">Aún no hay fotos en la galería</p>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const AIAssistant = ({
   currentWeekData,
   tasks,
   dueDate,
   babyNames,
+  parent1Name,
+  parent1Gender,
+  parent2Name,
+  parent2Gender,
 }: {
   currentWeekData: { weeks: number; days: number };
   tasks: Task[];
   dueDate?: string;
   babyNames: string[];
+  parent1Name?: string;
+  parent1Gender?: Profile['parent1Gender'];
+  parent2Name?: string;
+  parent2Gender?: Profile['parent2Gender'];
 }) => {
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; text: string }[]>([
     {
@@ -1803,6 +1789,13 @@ const AIAssistant = ({
   }, [messages]);
 
   const assistantContext = useMemo(() => {
+    const adults = [
+      formatFamilyAdult(parent1Name, parent1Gender),
+      formatFamilyAdult(parent2Name, parent2Gender),
+    ].filter((value): value is string => Boolean(value));
+
+    const babies = babyNames.map((name) => name.trim()).filter(Boolean);
+
     const pendingTasks = tasks
       .filter((task) => !task.isCompleted)
       .sort((left, right) => {
@@ -1818,13 +1811,21 @@ const AIAssistant = ({
 
     return [
       'Contexto actual de BabyPlan:',
-      `- Bebé/s: ${babyNames.join(' & ')}`,
+      `- Adultos: ${adults.length > 0 ? adults.join(', ') : 'No especificados'}`,
+      `- Bebé/s: ${babies.join(', ') || 'No especificados'}`,
       `- Semana actual: ${currentWeekData.weeks}+${currentWeekData.days}`,
       `- FPP: ${formatIsoDate(dueDate)}`,
       '- Pendientes más relevantes:',
       ...(pendingTasks.length > 0 ? pendingTasks : ['- No hay tareas pendientes registradas.']),
+      '',
+      'Reglas obligatorias de esta respuesta:',
+      '- Usa exactamente los nombres del contexto.',
+      '- Nunca inventes nombres nuevos.',
+      '- No confundas adultos con bebe/s.',
+      '- Responde en texto plano, sin markdown ni simbolos como # o **.',
+      '- Ordena la respuesta con una introduccion corta y luego recomendaciones claras.',
     ].join('\n');
-  }, [babyNames, currentWeekData.days, currentWeekData.weeks, dueDate, tasks]);
+  }, [babyNames, currentWeekData.days, currentWeekData.weeks, dueDate, parent1Gender, parent1Name, parent2Gender, parent2Name, tasks]);
 
   const sendPrompt = async (prompt: string) => {
     const cleanPrompt = prompt.trim();
@@ -1836,7 +1837,11 @@ const AIAssistant = ({
 
     try {
       const response = await askGemini(`${assistantContext}\n\nPregunta del usuario: ${cleanPrompt}`);
-      setMessages((prev) => [...prev, { role: 'assistant', text: response || 'No pude generar una respuesta.' }]);
+      const normalizedResponse = formatAssistantResponse(response || '');
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', text: normalizedResponse || 'No pude generar una respuesta.' },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -1889,7 +1894,7 @@ const AIAssistant = ({
                   message.role === 'user'
                     ? 'bg-teal-600 text-white'
                     : 'bg-stone-50 text-stone-800 border border-stone-200'
-                }`}>
+                } whitespace-pre-wrap break-words`}>
                   {message.text}
                 </div>
               </div>
@@ -2142,7 +2147,6 @@ export default function App() {
   const [checkoutError, setCheckoutError] = useState('');
   const [isAddingWishlist, setIsAddingWishlist] = useState(false);
   const [isAddingTask, setIsAddingTask] = useState(false);
-  const [isAddingPhoto, setIsAddingPhoto] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -2192,25 +2196,31 @@ export default function App() {
   });
 
   const displayGifts = useMemo(() => {
-    const categoryOrder = new Map(WISHLIST_CATEGORIES.map((category, index) => [category, index]));
-    const templateOrder = new Map(
-      MASTER_GIFTS.map((gift, index) => [normalizeComparableText(gift.name), index])
-    );
+    const categoryOrder = new Map<string, number>(WISHLIST_CATEGORIES.map((category, index) => [category, index]));
+    const templateOrder = new Map(MASTER_GIFTS.map((gift, index) => [gift.catalogKey, index]));
 
     return gifts
+      .filter((gift) => !RETIRED_WISHLIST_GIFT_NAMES.some((retiredName) => templateNameMatches(retiredName, gift.name)))
       .map((gift) => {
-        const template = findMatchingGiftTemplate(gift.name);
+        const template = findMatchingGiftTemplate(gift);
         return template
           ? {
               ...gift,
+              catalogKey: template.catalogKey,
               name: template.name,
               category: template.category,
+              isRepeatable: template.isRepeatable,
+              quantityNeeded: template.quantityNeeded,
+              price: gift.price || template.price,
             }
-          : gift;
+          : {
+              ...gift,
+              category: resolveWishlistCategory(gift.category, gift.name),
+            };
       })
       .sort((left, right) => {
-        const leftTemplateOrder = templateOrder.get(normalizeComparableText(left.name)) ?? 9999;
-        const rightTemplateOrder = templateOrder.get(normalizeComparableText(right.name)) ?? 9999;
+        const leftTemplateOrder = templateOrder.get(resolveGiftCatalogKey(left) || '') ?? 9999;
+        const rightTemplateOrder = templateOrder.get(resolveGiftCatalogKey(right) || '') ?? 9999;
         if (leftTemplateOrder !== rightTemplateOrder) return leftTemplateOrder - rightTemplateOrder;
 
         const leftCategoryOrder = categoryOrder.get(left.category) ?? 999;
@@ -2222,17 +2232,18 @@ export default function App() {
   }, [gifts]);
 
   const displayTasks = useMemo(() => {
-    const categoryOrder = new Map(TASK_CATEGORIES.map((category, index) => [category, index]));
+    const categoryOrder = new Map<string, number>(TASK_CATEGORIES.map((category, index) => [category, index]));
     const templateOrder = new Map(
-      MASTER_TASKS.map((task, index) => [normalizeComparableText(task.title), index])
+      MASTER_TASKS.map((task, index) => [task.catalogKey || normalizeComparableText(task.title), index])
     );
 
     return tasks
       .map((task) => {
-        const template = findMatchingTaskTemplate(task.title);
+        const template = findMatchingTaskTemplate(task);
         return template
           ? {
               ...task,
+              catalogKey: template.catalogKey,
               title: template.title,
               category: template.category,
               phase: template.phase,
@@ -2241,8 +2252,8 @@ export default function App() {
           : task;
       })
       .sort((left, right) => {
-        const leftTemplateOrder = templateOrder.get(normalizeComparableText(left.title)) ?? 9999;
-        const rightTemplateOrder = templateOrder.get(normalizeComparableText(right.title)) ?? 9999;
+        const leftTemplateOrder = templateOrder.get(resolveTaskCatalogKey(left) || normalizeComparableText(left.title)) ?? 9999;
+        const rightTemplateOrder = templateOrder.get(resolveTaskCatalogKey(right) || normalizeComparableText(right.title)) ?? 9999;
         if (leftTemplateOrder !== rightTemplateOrder) return leftTemplateOrder - rightTemplateOrder;
 
         const leftCategoryOrder = categoryOrder.get(left.category) ?? 999;
@@ -2353,7 +2364,7 @@ export default function App() {
         );
 
         const matchingTaskDocs = allTasksSnapshot.docs.filter((taskDoc: any) =>
-          templateNameMatches((taskDoc.data() as Task).title, item.gift.name)
+          giftMatchesTask(item.gift, taskDoc.data() as Task)
         );
 
         await Promise.all(
@@ -2383,7 +2394,6 @@ export default function App() {
   const handleMobileAdd = () => {
     if (activeTab === 'wishlist') setIsAddingWishlist(true);
     if (activeTab === 'checklists') setIsAddingTask(true);
-    if (activeTab === 'gallery') setIsAddingPhoto(true);
   };
 
   if (!isAuthReady) {
@@ -2466,12 +2476,14 @@ export default function App() {
                   tasks={displayTasks}
                   dueDate={effectiveProfile?.dueDate}
                   babyNames={effectiveProfile?.babyNames || [effectiveProfile?.babyName || 'Bebé']}
+                  parent1Name={effectiveProfile?.parent1Name}
+                  parent1Gender={effectiveProfile?.parent1Gender}
+                  parent2Name={effectiveProfile?.parent2Name}
+                  parent2Gender={effectiveProfile?.parent2Gender}
                 />
               )}
 
-              {!guestProfile && activeTab === 'gallery' && (
-                <Gallery viewingUserId={viewingUserId} isAdding={isAddingPhoto} setIsAdding={setIsAddingPhoto} />
-              )}
+
             </motion.div>
           </AnimatePresence>
         </main>

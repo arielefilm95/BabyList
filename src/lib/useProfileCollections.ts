@@ -8,7 +8,12 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 
-import { MASTER_GIFTS, MASTER_TASKS, WISHLIST_CATALOG_VERSION } from '../constants';
+import {
+  MASTER_GIFTS,
+  MASTER_TASKS,
+  RETIRED_WISHLIST_GIFT_NAMES,
+  WISHLIST_CATALOG_VERSION,
+} from '../constants';
 import type { BankDetails, Gift, Task } from '../types';
 import { db, handleFirestoreError, OperationType } from './firebase';
 
@@ -31,16 +36,27 @@ const normalizeComparableText = (value: string) =>
     .replace(/[^a-z0-9]+/g, ' ')
     .trim();
 
-const catalogGiftMatches = (left: string, right: string) => {
-  const normalizedLeft = normalizeComparableText(left);
-  const normalizedRight = normalizeComparableText(right);
+const templateNameMatches = (left?: string, right?: string) => {
+  const normalizedLeft = normalizeComparableText(left || '');
+  const normalizedRight = normalizeComparableText(right || '');
 
   return (
-    normalizedLeft === normalizedRight ||
-    normalizedLeft.includes(normalizedRight) ||
-    normalizedRight.includes(normalizedLeft)
+    Boolean(normalizedLeft) &&
+    Boolean(normalizedRight) &&
+    (normalizedLeft === normalizedRight ||
+      normalizedLeft.includes(normalizedRight) ||
+      normalizedRight.includes(normalizedLeft))
   );
 };
+
+const findMatchingGiftTemplate = (gift: Partial<Gift>) =>
+  MASTER_GIFTS.find((template) =>
+    (gift.catalogKey && template.catalogKey === gift.catalogKey) ||
+    templateNameMatches(template.name, gift.name)
+  );
+
+const isRetiredWishlistGift = (gift: Partial<Gift>) =>
+  RETIRED_WISHLIST_GIFT_NAMES.some((retiredName) => templateNameMatches(retiredName, gift.name));
 
 const seedWishlist = async (userId: string) => {
   const batch = writeBatch(db);
@@ -77,6 +93,15 @@ const seedTasks = async (userId: string) => {
 };
 
 const cleanupLegacyWishlistImages = async (userId: string, giftIds: string[]) => {
+  if (giftIds.length === 0) {
+    await setDoc(
+      doc(db, 'profiles', userId),
+      { hasCleanedLegacyWishlistImages: true },
+      { merge: true }
+    );
+    return;
+  }
+
   const batch = writeBatch(db);
 
   giftIds.forEach((giftId) => {
@@ -94,25 +119,50 @@ const cleanupLegacyWishlistImages = async (userId: string, giftIds: string[]) =>
   await batch.commit();
 };
 
-const syncMissingWishlistItems = async (userId: string, existingGifts: Gift[]) => {
-  const missingGifts = MASTER_GIFTS.filter(
-    (masterGift) => !existingGifts.some((existingGift) => catalogGiftMatches(existingGift.name, masterGift.name))
-  );
-
-  if (missingGifts.length === 0) {
-    await setDoc(
-      doc(db, 'profiles', userId),
-      { wishlistCatalogVersion: WISHLIST_CATALOG_VERSION },
-      { merge: true }
-    );
-    return;
-  }
-
+const syncWishlistCatalog = async (userId: string, existingGifts: Gift[]) => {
   const batch = writeBatch(db);
   const wishlistRef = collection(db, 'profiles', userId, 'wishlist');
+  const matchedTemplateKeys = new Set<string>();
+  let hasOperations = false;
 
-  missingGifts.forEach((gift) => {
-    batch.set(doc(wishlistRef), gift);
+  existingGifts.forEach((gift) => {
+    const template = findMatchingGiftTemplate(gift);
+
+    if (template) {
+      matchedTemplateKeys.add(template.catalogKey);
+
+      const nextData: Partial<Gift> = {};
+
+      if (gift.catalogKey !== template.catalogKey) nextData.catalogKey = template.catalogKey;
+      if (gift.name !== template.name) nextData.name = template.name;
+      if (gift.category !== template.category) nextData.category = template.category;
+      if (gift.isRepeatable !== template.isRepeatable) nextData.isRepeatable = template.isRepeatable;
+      if ((gift.quantityNeeded || 1) !== (template.quantityNeeded || 1)) nextData.quantityNeeded = template.quantityNeeded;
+      if ((gift.price || 0) !== (template.price || 0)) nextData.price = template.price;
+
+      if (!template.isRepeatable && (gift.quantityReserved || 0) !== 0) {
+        nextData.quantityReserved = 0;
+      }
+
+      if (Object.keys(nextData).length > 0) {
+        batch.update(doc(wishlistRef, gift.id), nextData);
+        hasOperations = true;
+      }
+
+      return;
+    }
+
+    if (isRetiredWishlistGift(gift)) {
+      batch.delete(doc(wishlistRef, gift.id));
+      hasOperations = true;
+    }
+  });
+
+  MASTER_GIFTS.forEach((template) => {
+    if (!matchedTemplateKeys.has(template.catalogKey)) {
+      batch.set(doc(wishlistRef), template);
+      hasOperations = true;
+    }
   });
 
   batch.set(
@@ -120,6 +170,15 @@ const syncMissingWishlistItems = async (userId: string, existingGifts: Gift[]) =
     { wishlistCatalogVersion: WISHLIST_CATALOG_VERSION },
     { merge: true }
   );
+
+  if (!hasOperations) {
+    await setDoc(
+      doc(db, 'profiles', userId),
+      { wishlistCatalogVersion: WISHLIST_CATALOG_VERSION },
+      { merge: true }
+    );
+    return;
+  }
 
   await batch.commit();
 };
@@ -170,6 +229,7 @@ export const useProfileCollections = ({
             wishlistSeedStartedRef.current = false;
             handleFirestoreError(error, OperationType.WRITE, `profiles/${viewingUserId}/wishlist`);
           });
+          return;
         }
 
         if (
@@ -178,20 +238,14 @@ export const useProfileCollections = ({
           (wishlistCatalogVersion ?? 0) < WISHLIST_CATALOG_VERSION &&
           !wishlistSyncStartedRef.current
         ) {
-          const hasMissingCatalogItems = MASTER_GIFTS.some(
-            (masterGift) => !snapshotGifts.some((existingGift) => catalogGiftMatches(existingGift.name, masterGift.name))
-          );
-
-          if (hasMissingCatalogItems) {
-            wishlistSyncStartedRef.current = true;
-            void syncMissingWishlistItems(viewingUserId, snapshotGifts)
-              .catch((error) => {
-                handleFirestoreError(error, OperationType.WRITE, `profiles/${viewingUserId}/wishlist`);
-              })
-              .finally(() => {
-                wishlistSyncStartedRef.current = false;
-              });
-          }
+          wishlistSyncStartedRef.current = true;
+          void syncWishlistCatalog(viewingUserId, snapshotGifts)
+            .catch((error) => {
+              handleFirestoreError(error, OperationType.WRITE, `profiles/${viewingUserId}/wishlist`);
+            })
+            .finally(() => {
+              wishlistSyncStartedRef.current = false;
+            });
         }
       },
       (error) => handleFirestoreError(error, OperationType.LIST, `profiles/${viewingUserId}/wishlist`)
@@ -259,13 +313,7 @@ export const useProfileCollections = ({
       cleanupStartedRef.current = false;
       handleFirestoreError(error, OperationType.WRITE, `profiles/${viewingUserId}/wishlist`);
     });
-  }, [
-    viewingUserId,
-    isOwner,
-    gifts,
-    hasLoadedWishlist,
-    hasCleanedLegacyWishlistImages,
-  ]);
+  }, [viewingUserId, isOwner, gifts, hasLoadedWishlist, hasCleanedLegacyWishlistImages]);
 
   return {
     gifts,
