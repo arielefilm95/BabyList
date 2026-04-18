@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { upload } from '@vercel/blob/client';
 import { db } from '../lib/firebase';
 import { addDoc, collection, onSnapshot, orderBy, query, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../lib/AuthContext';
@@ -25,20 +26,45 @@ import {
   Filter,
   Search,
   Baby,
+  Camera,
+  ImagePlus,
   Phone,
   MessageCircle,
   Check,
   X,
 } from 'lucide-react';
 
+const MAX_DONATION_IMAGES = 5;
+const MAX_DONATION_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
+const DONATION_UPLOAD_ROUTE = '/api/donations/upload';
+const VERCEL_BLOB_MULTIPART_THRESHOLD_BYTES = 4_500_000;
+
+type LocalDonationImage = {
+  id: string;
+  file: File;
+  previewUrl: string;
+};
+
+const sanitizeFileName = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+
 export const Donations = () => {
   const { user, profile } = useAuth();
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const selectedImagesRef = useRef<LocalDonationImage[]>([]);
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<LocalDonationImage[]>([]);
 
   const [filterCity, setFilterCity] = useState('');
   const [filterCommune, setFilterCommune] = useState('');
@@ -56,6 +82,16 @@ export const Donations = () => {
   });
 
   const hasBabyOnTheWay = profile?.dueDate && new Date(profile.dueDate) > new Date();
+
+  useEffect(() => {
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
+
+  useEffect(() => () => {
+    selectedImagesRef.current.forEach((image) => {
+      URL.revokeObjectURL(image.previewUrl);
+    });
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -114,11 +150,119 @@ export const Donations = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const nextValue = name === 'quantity' ? Math.max(1, Number(value) || 1) : value;
+    setFormData((prev) => ({ ...prev, [name]: nextValue }));
 
     if (name === 'city') {
       setFormData((prev) => ({ ...prev, commune: '' }));
     }
+  };
+
+  const clearSelectedImages = () => {
+    selectedImagesRef.current.forEach((image) => {
+      URL.revokeObjectURL(image.previewUrl);
+    });
+    selectedImagesRef.current = [];
+    setSelectedImages([]);
+  };
+
+  const resetDonationForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      category: 'Ropa',
+      condition: 'Bueno',
+      quantity: 1,
+      city: '',
+      commune: '',
+    });
+    clearSelectedImages();
+  };
+
+  const handleDialogChange = (open: boolean) => {
+    setShowAddDialog(open);
+    if (!open && !submitting) {
+      resetDonationForm();
+    }
+  };
+
+  const appendSelectedImages = (fileList: FileList | null) => {
+    if (!fileList) return;
+
+    const candidateFiles = Array.from(fileList);
+    const validFiles = candidateFiles.filter((file) => file.type.startsWith('image/'));
+    const validSizedFiles = validFiles.filter((file) => file.size <= MAX_DONATION_IMAGE_SIZE_BYTES);
+    const availableSlots = Math.max(0, MAX_DONATION_IMAGES - selectedImagesRef.current.length);
+
+    if (!availableSlots) {
+      alert(`Solo puedes subir hasta ${MAX_DONATION_IMAGES} fotos por donacion.`);
+      return;
+    }
+
+    const filesToAdd = validSizedFiles.slice(0, availableSlots);
+
+    if (candidateFiles.length !== validFiles.length) {
+      alert('Solo se permiten archivos de imagen.');
+    } else if (validFiles.length !== validSizedFiles.length) {
+      alert('Cada imagen debe pesar menos de 8 MB.');
+    } else if (validSizedFiles.length > availableSlots) {
+      alert(`Solo puedes subir hasta ${MAX_DONATION_IMAGES} fotos por donacion.`);
+    }
+
+    if (!filesToAdd.length) return;
+
+    const nextImages = filesToAdd.map((file) => ({
+      id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+
+    setSelectedImages((current) => [...current, ...nextImages]);
+  };
+
+  const handleImageInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    appendSelectedImages(event.target.files);
+    event.target.value = '';
+  };
+
+  const handleRemoveImage = (imageId: string) => {
+    setSelectedImages((current) => {
+      const imageToRemove = current.find((image) => image.id === imageId);
+      if (imageToRemove) {
+        URL.revokeObjectURL(imageToRemove.previewUrl);
+      }
+
+      return current.filter((image) => image.id !== imageId);
+    });
+  };
+
+  const uploadSelectedImages = async (userId: string) => {
+    if (!selectedImagesRef.current.length) return [];
+    if (!user) {
+      throw new Error('Debes iniciar sesion para subir imagenes.');
+    }
+
+    const uploadGroupId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const idToken = await user.getIdToken();
+
+    return Promise.all(
+      selectedImagesRef.current.map(async ({ file }, index) => {
+        const safeName = sanitizeFileName(file.name || `image-${index + 1}.jpg`) || `image-${index + 1}.jpg`;
+        const pathname = `donations/${userId}/${uploadGroupId}/${index + 1}-${safeName}`;
+        const blob = await upload(pathname, file, {
+          access: 'public',
+          handleUploadUrl: DONATION_UPLOAD_ROUTE,
+          clientPayload: JSON.stringify({ userId }),
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+          multipart: file.size > VERCEL_BLOB_MULTIPART_THRESHOLD_BYTES,
+          ...(file.type ? { contentType: file.type } : {}),
+        });
+
+        return blob.url;
+      })
+    );
   };
 
   const handleSubmit = async () => {
@@ -130,6 +274,8 @@ export const Donations = () => {
 
     setSubmitting(true);
     try {
+      const imageUrls = await uploadSelectedImages(user.uid);
+
       await addDoc(collection(db, 'donations'), {
         donorId: user.uid,
         donorName: `${profile.parent1Name} y ${profile.parent2Name}`,
@@ -139,7 +285,7 @@ export const Donations = () => {
         category: formData.category,
         condition: formData.condition,
         quantity: formData.quantity,
-        imageUrls: [],
+        imageUrls,
         location: {
           city: formData.city,
           commune: formData.commune,
@@ -149,18 +295,10 @@ export const Donations = () => {
       });
 
       setShowAddDialog(false);
-      setFormData({
-        title: '',
-        description: '',
-        category: 'Ropa',
-        condition: 'Bueno',
-        quantity: 1,
-        city: '',
-        commune: '',
-      });
+      resetDonationForm();
     } catch (error) {
       console.error('Error creating donation:', error);
-      alert('Error al crear la donación');
+      alert(error instanceof Error ? error.message : 'Error al crear la donación');
     } finally {
       setSubmitting(false);
     }
@@ -231,7 +369,7 @@ export const Donations = () => {
         </div>
 
         {profile && (
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <Dialog open={showAddDialog} onOpenChange={handleDialogChange}>
             <DialogTrigger asChild>
               <Button className="bg-rose-500 hover:bg-rose-600">
                 <Plus className="w-4 h-4 mr-2" />
@@ -281,6 +419,75 @@ export const Donations = () => {
                       rows={4}
                       maxLength={1000}
                     />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label>Fotos</Label>
+                      <span className="text-xs text-stone-500">
+                        Hasta {MAX_DONATION_IMAGES} imagenes de 8 MB
+                      </span>
+                    </div>
+
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleImageInputChange}
+                      className="hidden"
+                    />
+                    <input
+                      ref={galleryInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageInputChange}
+                      className="hidden"
+                    />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => cameraInputRef.current?.click()}
+                        disabled={submitting || selectedImages.length >= MAX_DONATION_IMAGES}
+                      >
+                        <Camera className="w-4 h-4 mr-2" />
+                        Camara
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => galleryInputRef.current?.click()}
+                        disabled={submitting || selectedImages.length >= MAX_DONATION_IMAGES}
+                      >
+                        <ImagePlus className="w-4 h-4 mr-2" />
+                        Galeria
+                      </Button>
+                    </div>
+
+                    {selectedImages.length > 0 && (
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {selectedImages.map((image) => (
+                          <div key={image.id} className="relative overflow-hidden rounded-xl border border-stone-200 bg-stone-50">
+                            <img
+                              src={image.previewUrl}
+                              alt="Vista previa de donacion"
+                              className="h-28 w-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveImage(image.id)}
+                              className="absolute right-2 top-2 rounded-full bg-white/90 p-1 text-stone-600 shadow-sm transition hover:bg-white"
+                              aria-label="Quitar imagen"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -374,7 +581,7 @@ export const Donations = () => {
                   <div className="pt-4 flex gap-3">
                     <Button
                       variant="outline"
-                      onClick={() => setShowAddDialog(false)}
+                      onClick={() => handleDialogChange(false)}
                       className="flex-1"
                     >
                       Cancelar
@@ -542,8 +749,22 @@ const DonationCard: React.FC<DonationCardProps> = ({ donation, currentUserId, on
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
-      <div className="h-32 bg-gradient-to-br from-stone-100 to-stone-50 flex items-center justify-center">
-        <span className="text-5xl">{categoryConfig.emoji}</span>
+      <div className="relative h-32 bg-gradient-to-br from-stone-100 to-stone-50 flex items-center justify-center">
+        {donation.imageUrls?.[0] ? (
+          <img
+            src={donation.imageUrls[0]}
+            alt={donation.title}
+            className="h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <span className="text-5xl">{categoryConfig.emoji}</span>
+        )}
+        {donation.imageUrls?.length > 1 && (
+          <span className="absolute right-3 top-3 rounded-full bg-black/65 px-2 py-0.5 text-xs font-medium text-white">
+            +{donation.imageUrls.length - 1}
+          </span>
+        )}
       </div>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">

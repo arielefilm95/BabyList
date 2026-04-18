@@ -105,7 +105,7 @@ export const Onboarding = () => {
   const effectiveDueDate = formData.dueDate || derivedDueDate;
   const sanitizedBabyNames = formData.babyNames.slice(0, formData.babyCount).map((name) => name.trim());
   const hasValidDateSetup = Boolean(formData.dueDate) || Boolean(derivedDueDate);
-  const bankDetailsAreComplete = Object.values(formData.bankDetails).every((value) => value.trim());
+  const bankDetailsAreComplete = Object.values(formData.bankDetails).every((value) => String(value).trim());
   const canContinueFromStep =
     (step === 1 && true) ||
     (step === 2 && Boolean(formData.parent1Name.trim())) ||
