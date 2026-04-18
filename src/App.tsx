@@ -25,6 +25,8 @@ import {
   Calendar,
   CheckCircle2,
   Circle,
+  Eye,
+  EyeOff,
   ExternalLink,
   Gift as GiftIcon,
   Heart,
@@ -155,6 +157,22 @@ const formatAssistantResponse = (value: string) =>
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
+const hasCompletedOnboarding = (profile: Partial<Profile> | null | undefined) => {
+  if (!profile) return false;
+
+  const parent1Name = profile.parent1Name?.trim();
+  const dueDate = profile.dueDate?.trim();
+  const babyNames = (profile.babyNames || [])
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  if (!babyNames.length && profile.babyName?.trim()) {
+    babyNames.push(profile.babyName.trim());
+  }
+
+  return Boolean(parent1Name && dueDate && babyNames.length > 0);
+};
+
 const templateNameMatches = (left: string, right: string) => {
   const normalizedLeft = normalizeComparableText(left);
   const normalizedRight = normalizeComparableText(right);
@@ -279,8 +297,20 @@ const LandingPage = () => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleToggleMode = () => {
+    setIsLogin((current) => !current);
+    setError('');
+    setPassword('');
+    setConfirmPassword('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -292,9 +322,12 @@ const LandingPage = () => {
         if (!identifier || !password) throw new Error('Completa todos los campos');
         await loginWithEmailOrUsername(identifier, password);
       } else {
-        if (!email || !username || !password) throw new Error('Completa todos los campos');
+        if (!email || !username || !password || !confirmPassword) throw new Error('Completa todos los campos');
         if (username.includes('@') || username.includes(' ')) {
           throw new Error('El nombre de usuario no puede contener espacios ni @');
+        }
+        if (password !== confirmPassword) {
+          throw new Error('Las contraseñas no coinciden');
         }
         await registerWithEmailAndPasswordAndUsername(email, username, password);
       }
@@ -340,12 +373,23 @@ const LandingPage = () => {
                   <div>
                     <label className="text-sm font-medium text-stone-700">Contraseña</label>
                     <Input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
                       className="mt-1"
                     />
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((current) => !current)}
+                        className="inline-flex items-center gap-2 text-sm text-stone-500 transition hover:text-stone-700"
+                        aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        <span>{showPassword ? 'Ocultar' : 'Mostrar'}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -373,12 +417,44 @@ const LandingPage = () => {
                   <div>
                     <label className="text-sm font-medium text-stone-700">Contraseña</label>
                     <Input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Mínimo 6 caracteres"
                       className="mt-1"
                     />
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((current) => !current)}
+                        className="inline-flex items-center gap-2 text-sm text-stone-500 transition hover:text-stone-700"
+                        aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        <span>{showPassword ? 'Ocultar' : 'Mostrar'}</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-stone-700">Confirmar contrasena</label>
+                    <Input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Repite tu contrasena"
+                      className="mt-1"
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword((current) => !current)}
+                        className="inline-flex items-center gap-2 text-sm text-stone-500 transition hover:text-stone-700"
+                        aria-label={showConfirmPassword ? 'Ocultar confirmacion de contrasena' : 'Mostrar confirmacion de contrasena'}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        <span>{showConfirmPassword ? 'Ocultar' : 'Mostrar'}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -410,7 +486,7 @@ const LandingPage = () => {
             </div>
 
             <div className="mt-6 text-center text-sm">
-              <button onClick={() => { setIsLogin(!isLogin); setError(''); }} className="text-teal-600 hover:underline font-medium">
+              <button onClick={handleToggleMode} className="text-teal-600 hover:underline font-medium">
                 {isLogin ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
               </button>
             </div>
@@ -2327,14 +2403,15 @@ export default function App() {
 
   const effectiveProfile = guestProfile || profile;
   const isOwner = Boolean(user?.uid && viewingUserId && user.uid === viewingUserId);
+  const canAccessOwnerCollections = isOwner && hasCompletedOnboarding(profile);
 
   const { gifts, tasks, bankDetails } = useProfileCollections({
     viewingUserId,
-    isOwner,
-    hasSeededWishlist: isOwner ? profile?.hasSeededWishlist : false,
-    wishlistCatalogVersion: isOwner ? profile?.wishlistCatalogVersion : undefined,
-    hasSeededTasks: isOwner ? profile?.hasSeededTasks : false,
-    hasCleanedLegacyWishlistImages: isOwner ? profile?.hasCleanedLegacyWishlistImages : false,
+    isOwner: canAccessOwnerCollections,
+    hasSeededWishlist: canAccessOwnerCollections ? profile?.hasSeededWishlist : false,
+    wishlistCatalogVersion: canAccessOwnerCollections ? profile?.wishlistCatalogVersion : undefined,
+    hasSeededTasks: canAccessOwnerCollections ? profile?.hasSeededTasks : false,
+    hasCleanedLegacyWishlistImages: canAccessOwnerCollections ? profile?.hasCleanedLegacyWishlistImages : false,
   });
 
   const displayGifts = useMemo(() => {
@@ -2553,7 +2630,7 @@ export default function App() {
     return <LandingPage />;
   }
 
-  if (user && !profile && !isGuestView) {
+  if (user && !hasCompletedOnboarding(profile) && !isGuestView) {
     return <Onboarding />;
   }
 

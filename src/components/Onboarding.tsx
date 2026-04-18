@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { db } from '../lib/firebase';
-import { doc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
+import { collection, doc, getDocs, serverTimestamp, setDoc, writeBatch } from 'firebase/firestore';
 import { useAuth } from '../lib/AuthContext';
 import { MASTER_GIFTS, MASTER_TASKS, TASK_CATEGORIES, WISHLIST_CATALOG_VERSION } from '../constants';
 import { calculateDueDateFromCurrentGestation, formatIsoDate } from '../lib/pregnancy';
@@ -47,6 +47,24 @@ const templateNameMatches = (left: string, right: string) => {
     normalizedLeft.includes(normalizedRight) ||
     normalizedRight.includes(normalizedLeft)
   );
+};
+
+const replaceCollection = async <T extends Record<string, unknown>>(
+  collectionRef: ReturnType<typeof collection>,
+  nextDocuments: T[]
+) => {
+  const existingSnapshot = await getDocs(collectionRef);
+  const batch = writeBatch(db);
+
+  existingSnapshot.docs.forEach((snapshotDoc) => {
+    batch.delete(snapshotDoc.ref);
+  });
+
+  nextDocuments.forEach((payload) => {
+    batch.set(doc(collectionRef), payload);
+  });
+
+  await batch.commit();
 };
 
 export const Onboarding = () => {
@@ -199,29 +217,33 @@ export const Onboarding = () => {
         });
       }
 
-      for (const gift of MASTER_GIFTS) {
-        const isCompleted = completedTaskTemplates.some((task) => {
-          if (gift.catalogKey && task.catalogKey) {
-            return gift.catalogKey === task.catalogKey;
-          }
+      await replaceCollection(
+        collection(db, 'profiles', user.uid, 'wishlist'),
+        MASTER_GIFTS.map((gift) => {
+          const isCompleted = completedTaskTemplates.some((task) => {
+            if (gift.catalogKey && task.catalogKey) {
+              return gift.catalogKey === task.catalogKey;
+            }
 
-          return templateNameMatches(task.title, gift.name);
-        });
+            return templateNameMatches(task.title, gift.name);
+          });
 
-        await addDoc(collection(db, 'profiles', user.uid, 'wishlist'), {
-          ...gift,
-          isReserved: isCompleted,
-          quantityReserved: isCompleted ? gift.quantityNeeded : 0,
-          reservedBy: isCompleted ? 'Nosotros (Ya lo tenemos)' : '',
-        });
-      }
+          return {
+            ...gift,
+            isReserved: isCompleted,
+            quantityReserved: isCompleted ? gift.quantityNeeded : 0,
+            reservedBy: isCompleted ? 'Nosotros (Ya lo tenemos)' : '',
+          };
+        })
+      );
 
-      for (const task of MASTER_TASKS) {
-        await addDoc(collection(db, 'profiles', user.uid, 'tasks'), {
+      await replaceCollection(
+        collection(db, 'profiles', user.uid, 'tasks'),
+        MASTER_TASKS.map((task) => ({
           ...task,
           isCompleted: formData.completedTasks.includes(task.title),
-        });
-      }
+        }))
+      );
     } catch (error) {
       console.error('Error saving profile:', error);
       alert('No pudimos crear tu perfil. Intenta nuevamente.');
