@@ -35,6 +35,7 @@ export const Donations = () => {
   const { user, profile } = useAuth();
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -57,19 +58,30 @@ export const Donations = () => {
   const hasBabyOnTheWay = profile?.dueDate && new Date(profile.dueDate) > new Date();
 
   useEffect(() => {
+    setLoading(true);
+    setError('');
+
     const donationsQuery = query(
       collection(db, 'donations'),
       orderBy('createdAt', 'desc')
     );
 
-    const unsubscribe = onSnapshot(donationsQuery, (snapshot) => {
-      const donationData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Donation[];
-      setDonations(donationData);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      donationsQuery,
+      (snapshot) => {
+        const donationData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Donation[];
+        setDonations(donationData);
+        setLoading(false);
+      },
+      (snapshotError) => {
+        console.error('Error loading donations:', snapshotError);
+        setError('No pudimos cargar las donaciones. Revisa los permisos de Firestore para esta base.');
+        setLoading(false);
+      }
+    );
 
     return unsubscribe;
   }, []);
@@ -197,6 +209,14 @@ export const Donations = () => {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <Card className="border-rose-200 bg-rose-50">
+          <CardContent className="p-4 text-sm text-rose-700">
+            {error}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-stone-800 flex items-center gap-2">
