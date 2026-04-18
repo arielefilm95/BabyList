@@ -1,67 +1,6 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: wishlist
-    // Document ID: auto-generated
-    // Fields:
-    //   - name: string (required)
-    //   - category: string (required)
-    //   - imageUrl: string (optional)
-    //   - purchaseUrl: string (optional)
-    //   - isReserved: bool (required)
-    //   - reservedBy: string (optional)
-    //   - isRepeatable: bool (required)
-    //   - quantityNeeded: number (optional)
-    //   - quantityReserved: number (optional)
-    //
-    // Collection: tasks
-    // Document ID: auto-generated
-    // Fields:
-    //   - title: string (required)
-    //   - category: string (required, enum: Bebé, Mamá, Casa, Alimentación, Hospital, Trámites, Misiones)
-    //   - phase: string (required, enum: Early, Mid, Late)
-    //   - isCompleted: bool (required)
-    //   - priority: string (required, enum: Low, Medium, High)
-    //   - dueDate: string (optional, ISO)
-    //
-    // Collection: notifications
-    // Document ID: auto-generated
-    // Fields:
-    //   - title: string (required)
-    //   - message: string (required)
-    //   - type: string (required, enum: gift, task, system)
-    //   - createdAt: timestamp (required)
-    //   - isRead: bool (required)
-    //   - targetId: string (optional)
-    //
-    // Collection: photos
-    // Document ID: auto-generated
-    // Fields:
-    //   - url: string (required)
-    //   - description: string (optional)
-    //   - date: string (required)
-    //   - createdAt: timestamp (required)
-    //   - userId: string (required)
-    //
-    // Collection: profiles
-    // Document ID: userId
-    // Fields:
-    //   - parent1Name: string
-    //   - parent2Name: string
-    //   - babyName: string
-    //   - babyCount: number
-    //   - dueDate: string (ISO)
-    //   - pregnancyStartDate: string (ISO)
-    //   - gestationWeekAtStart: number
-    //   - role: string (admin/user)
-    //   - createdAt: timestamp
-    //
-    // ===============================================================
-
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -113,36 +52,79 @@ service cloud.firestore {
     }
 
     function isValidDonation(data) {
-      return data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
-             data.description is string && data.description.size() < 1000 &&
-             data.category in ['Ropa', 'Juguetes', 'Alimentación', 'Cuna y mueble', 'Paseo y transporte', 'Higiene y salud', 'Otros'] &&
-             data.condition in ['Nuevo', 'Como nuevo', 'Bueno', 'Regular'] &&
+      return data.donorId is string && data.donorId.size() > 0 &&
+             data.donorName is string && data.donorName.size() > 0 &&
+             (!('donorBabyDueDate' in data) || data.donorBabyDueDate is string) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.description is string && data.description.size() <= 1000 &&
+             data.category in ["Ropa", "Juguetes", "Alimentación", "Cuna y mueble", "Paseo y transporte", "Higiene y salud", "Otros"] &&
+             data.condition in ["Nuevo", "Como nuevo", "Bueno", "Regular"] &&
              data.quantity is number && data.quantity > 0 &&
              data.imageUrls is list &&
              data.location.city is string && data.location.city.size() > 0 &&
              data.location.commune is string && data.location.commune.size() > 0 &&
-             data.status in ['disponible', 'reservado', 'donado'];
+             (!('reservedBy' in data) || data.reservedBy is string) &&
+             (!('reservedByName' in data) || data.reservedByName is string) &&
+             data.status in ["disponible", "reservado", "donado"];
+    }
+
+    function isValidDonationContact(data) {
+      return data.donationId is string && data.donationId.size() > 0 &&
+             data.donorId is string && data.donorId.size() > 0 &&
+             data.contactMethod in ["whatsapp", "phone", "email"] &&
+             data.contactValue is string && data.contactValue.size() > 0 && data.contactValue.size() <= 120;
     }
 
     function isValidDonationRequest(data) {
-      return data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
-             data.description is string && data.description.size() < 1000 &&
-             data.category in ['Ropa', 'Juguetes', 'Alimentación', 'Cuna y mueble', 'Paseo y transporte', 'Higiene y salud', 'Otros'] &&
-             data.location.city is string && data.location.city.size() > 0 &&
-             data.location.commune is string && data.location.commune.size() > 0 &&
-             data.status in ['activo', 'cubierto'];
+      return data.donationId is string && data.donationId.size() > 0 &&
+             data.donationTitle is string && data.donationTitle.size() > 0 && data.donationTitle.size() < 200 &&
+             (!('donationImageUrl' in data) || data.donationImageUrl is string) &&
+             data.donorId is string && data.donorId.size() > 0 &&
+             data.donorName is string && data.donorName.size() > 0 &&
+             data.requesterId is string && data.requesterId.size() > 0 &&
+             data.requesterName is string && data.requesterName.size() > 0 &&
+             (!('requesterBabyDueDate' in data) || data.requesterBabyDueDate is string) &&
+             (!('requesterMessage' in data) || (data.requesterMessage is string && data.requesterMessage.size() <= 500)) &&
+             data.status in ["pending", "accepted", "rejected", "cancelled", "completed"] &&
+             (!('donorContactMethod' in data) || data.donorContactMethod in ["whatsapp", "phone", "email"]) &&
+             (!('donorContactValue' in data) || (data.donorContactValue is string && data.donorContactValue.size() > 0 && data.donorContactValue.size() <= 120));
+    }
+
+    function donationPath(donationId) {
+      return /databases/$(database)/documents/donations/$(donationId);
+    }
+
+    function donationExists(donationId) {
+      return exists(donationPath(donationId));
+    }
+
+    function isDonationOwner(donationId) {
+      return isAuthenticated() &&
+             donationExists(donationId) &&
+             get(donationPath(donationId)).data.donorId == request.auth.uid;
+    }
+
+    function isDonationOwnerAfter(donationId) {
+      return isAuthenticated() &&
+             getAfter(donationPath(donationId)).data.donorId == request.auth.uid;
+    }
+
+    function canReadDonationRequest(data) {
+      return isAuthenticated() &&
+             (data.donorId == request.auth.uid || data.requesterId == request.auth.uid);
     }
 
     match /profiles/{userId} {
       allow read: if true;
       allow create: if isOwner(userId) && isValidProfile(request.resource.data);
-      allow update: if isOwner(userId) && isValidProfile(request.resource.data) &&
-                      (request.resource.data.role == resource.data.role || isAdmin());
+      allow update: if isOwner(userId) &&
+                    isValidProfile(request.resource.data) &&
+                    (request.resource.data.role == resource.data.role || isAdmin());
 
       match /wishlist/{giftId} {
         allow read: if true;
         allow update: if !isOwner(userId) &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isReserved', 'reservedBy', 'quantityReserved']) &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(["isReserved", "reservedBy", "quantityReserved"]) &&
                       (resource.data.isRepeatable || !resource.data.isReserved);
         allow write: if isOwner(userId) && isValidGift(request.resource.data);
         allow delete: if isOwner(userId);
@@ -154,7 +136,7 @@ service cloud.firestore {
 
       match /notifications/{notificationId} {
         allow read: if isOwner(userId);
-        allow create: if isValidNotification(request.resource.data);
+        allow create: if isAuthenticated() && isValidNotification(request.resource.data);
         allow update: if isOwner(userId);
       }
 
@@ -172,7 +154,7 @@ service cloud.firestore {
     match /usernames/{username} {
       allow read: if true;
       allow create: if isAuthenticated() &&
-                    request.resource.data.keys().hasAll(['email', 'uid']) &&
+                    request.resource.data.keys().hasAll(["email", "uid"]) &&
                     request.resource.data.uid == request.auth.uid &&
                     request.resource.data.email is string;
       allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
@@ -180,22 +162,52 @@ service cloud.firestore {
 
     match /donations/{donationId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isValidDonation(request.resource.data);
-      allow update: if isAuthenticated() && (
-        isOwner(resource.data.donorId) ||
-        (!isOwner(resource.data.donorId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reservedBy', 'reservedByName']))
-      );
+      allow create: if isAuthenticated() &&
+                    request.resource.data.donorId == request.auth.uid &&
+                    request.resource.data.status == "disponible" &&
+                    isValidDonation(request.resource.data);
+      allow update: if isOwner(resource.data.donorId) &&
+                    request.resource.data.donorId == resource.data.donorId &&
+                    isValidDonation(request.resource.data);
       allow delete: if isOwner(resource.data.donorId);
     }
 
+    match /donationContacts/{donationId} {
+      allow read, delete: if isDonationOwner(donationId);
+      allow create: if isAuthenticated() &&
+                    request.resource.data.donationId == donationId &&
+                    request.resource.data.donorId == request.auth.uid &&
+                    isValidDonationContact(request.resource.data) &&
+                    isDonationOwnerAfter(donationId);
+      allow update: if isDonationOwner(donationId) &&
+                    request.resource.data.donationId == donationId &&
+                    request.resource.data.donorId == resource.data.donorId &&
+                    isValidDonationContact(request.resource.data);
+    }
+
     match /donationRequests/{requestId} {
-      allow read: if true;
-      allow create: if isAuthenticated() && isValidDonationRequest(request.resource.data);
-      allow update: if isAuthenticated() && (
-        isOwner(resource.data.requesterId) ||
-        (!isOwner(resource.data.requesterId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
-      );
-      allow delete: if isOwner(resource.data.requesterId);
+      allow read: if canReadDonationRequest(resource.data);
+      allow create: if isAuthenticated() &&
+                    request.resource.data.requesterId == request.auth.uid &&
+                    request.resource.data.status == "pending" &&
+                    donationExists(request.resource.data.donationId) &&
+                    get(donationPath(request.resource.data.donationId)).data.status == "disponible" &&
+                    get(donationPath(request.resource.data.donationId)).data.donorId == request.resource.data.donorId &&
+                    isValidDonationRequest(request.resource.data);
+      allow update: if isAuthenticated() &&
+                    isValidDonationRequest(request.resource.data) &&
+                    request.resource.data.donationId == resource.data.donationId &&
+                    request.resource.data.donorId == resource.data.donorId &&
+                    request.resource.data.requesterId == resource.data.requesterId &&
+                    request.resource.data.donationTitle == resource.data.donationTitle &&
+                    (
+                      (resource.data.donorId == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "donorContactMethod", "donorContactValue", "updatedAt"])) ||
+                      (resource.data.requesterId == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "updatedAt"]) &&
+                       request.resource.data.status == "cancelled")
+                    );
+      allow delete: if false;
     }
   }
 }

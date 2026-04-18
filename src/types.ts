@@ -70,9 +70,19 @@ export interface Profile {
   hasCleanedLegacyWishlistImages?: boolean;
 }
 
-export type DonationCategory = 'Ropa' | 'Juguetes' | 'Alimentación' | 'Cuna y mueble' | 'Paseo y transporte' | 'Higiene y salud' | 'Otros';
+export type DonationCategory =
+  | 'Ropa'
+  | 'Juguetes'
+  | 'Alimentación'
+  | 'Cuna y mueble'
+  | 'Paseo y transporte'
+  | 'Higiene y salud'
+  | 'Otros';
+
 export type DonationCondition = 'Nuevo' | 'Como nuevo' | 'Bueno' | 'Regular';
 export type DonationStatus = 'disponible' | 'reservado' | 'donado';
+export type DonationContactMethod = 'whatsapp' | 'phone' | 'email';
+export type DonationRequestStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed';
 
 export interface Donation {
   id: string;
@@ -93,20 +103,31 @@ export interface Donation {
   reservedBy?: string;
   reservedByName?: string;
   createdAt: any;
+  updatedAt?: any;
 }
 
 export interface DonationRequest {
   id: string;
+  donationId: string;
+  donationTitle: string;
+  donationImageUrl?: string;
+  donorId: string;
+  donorName: string;
   requesterId: string;
   requesterName: string;
   requesterBabyDueDate?: string;
-  title: string;
-  description: string;
-  category: DonationCategory;
-  location: {
-    city: string;
-    commune: string;
-  };
-  status: 'activo' | 'cubierto';
+  requesterMessage?: string;
+  status: DonationRequestStatus;
+  donorContactMethod?: DonationContactMethod;
+  donorContactValue?: string;
   createdAt: any;
+  updatedAt?: any;
+}
+
+export interface DonationContact {
+  donationId: string;
+  donorId: string;
+  contactMethod: DonationContactMethod;
+  contactValue: string;
+  updatedAt: any;
 }
