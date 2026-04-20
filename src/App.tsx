@@ -2531,16 +2531,17 @@ export default function App() {
     if (cart.length === 0 || !reserveName.trim() || !giftMethod || !viewingUserId) return;
 
     setCheckoutError('');
+    const reservedItems = [...cart];
     const finalName = giftMethod === 'transfer' ? `${reserveName} (Transferencia)` : reserveName;
 
     try {
       await runTransaction(db, async (transaction) => {
-        const giftRefs = cart.map((item) => doc(db, 'profiles', viewingUserId, 'wishlist', item.gift.id));
+        const giftRefs = reservedItems.map((item) => doc(db, 'profiles', viewingUserId, 'wishlist', item.gift.id));
         const giftDocs = await Promise.all(giftRefs.map((giftRef) => transaction.get(giftRef)));
         const updates: { ref: ReturnType<typeof doc>; data: Partial<Gift> }[] = [];
 
-        for (let index = 0; index < cart.length; index += 1) {
-          const item = cart[index];
+        for (let index = 0; index < reservedItems.length; index += 1) {
+          const item = reservedItems[index];
           const giftDoc = giftDocs[index];
 
           if (!giftDoc.exists()) {
@@ -2569,11 +2570,7 @@ export default function App() {
         updates.forEach((update) => transaction.update(update.ref, update.data));
       });
 
-      const allTasksSnapshot = isOwner
-        ? { docs: displayTasks.map((task) => ({ id: task.id, data: () => task, ref: doc(db, 'profiles', viewingUserId, 'tasks', task.id) })) }
-        : await getDocs(collection(db, 'profiles', viewingUserId, 'tasks'));
-
-      for (const item of cart) {
+      for (const item of reservedItems) {
         await createNotification(
           viewingUserId,
           '¡Nuevo Regalo!',
@@ -2581,22 +2578,34 @@ export default function App() {
           'gift',
           item.gift.id
         );
-
-        const matchingTaskDocs = allTasksSnapshot.docs.filter((taskDoc: any) =>
-          giftMatchesTask(item.gift, taskDoc.data() as Task)
-        );
-
-        await Promise.all(
-          matchingTaskDocs.map((taskDoc: any) =>
-            updateDoc(taskDoc.ref, {
-              isCompleted: true,
-              reservedBy: finalName,
-            })
-          )
-        );
       }
 
-      const total = cart.reduce((accumulator, item) => accumulator + ((item.gift.price || 0) * item.quantity), 0);
+      if (isOwner) {
+        const allTasksSnapshot = {
+          docs: displayTasks.map((task) => ({
+            id: task.id,
+            data: () => task,
+            ref: doc(db, 'profiles', viewingUserId, 'tasks', task.id),
+          })),
+        };
+
+        for (const item of reservedItems) {
+          const matchingTaskDocs = allTasksSnapshot.docs.filter((taskDoc: any) =>
+            giftMatchesTask(item.gift, taskDoc.data() as Task)
+          );
+
+          await Promise.all(
+            matchingTaskDocs.map((taskDoc: any) =>
+              updateDoc(taskDoc.ref, {
+                isCompleted: true,
+                reservedBy: finalName,
+              })
+            )
+          );
+        }
+      }
+
+      const total = reservedItems.reduce((accumulator, item) => accumulator + ((item.gift.price || 0) * item.quantity), 0);
       const method = giftMethod;
 
       setCart([]);
